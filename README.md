@@ -2,7 +2,7 @@
 
 > Sketch it rough, pin what's wrong, let the LLM do the geometry — no pixels, no wasted tokens.
 
-![A rough floor plan in the viewer: white sketch lines with draggable corner dots on a mm grid, and two numbered pins with notes for the LLM](docs/screenshot.png)
+![A rough floor plan in the viewer: white sketch lines with draggable corner dots on a mm grid, and two numbered pins with notes for the LLM](docs/ui-floor-plan.png)
 
 A two-file, no-build, local sketching loop for making vector drawings **with**
 a coding agent (Claude Code, Cursor, aider, a local model — anything that can
@@ -68,7 +68,7 @@ round-trip is one sentence, and the agent regenerates from your model.
   Fillets are parameters on the shape — arcs re-derive after every drag, and
   the dots never go away:
 
-  ![A plate with parametric corner radii: the drag dots sit at the sharp model corners while the arcs are derived](docs/parametric-corners.png)
+  ![A plate with parametric corner radii: the drag dots sit at the sharp model corners while the arcs are derived](docs/ui-parametric-corners.png)
 - **Drag empty space** → box-select. Only shapes *fully* inside the box
   select; drag the selection to move it, **Del** deletes, **Esc** deselects.
 - **Ctrl+Z / Ctrl+Shift+Z** undo/redo. Live mm lengths appear only where
