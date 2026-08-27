@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <!-- Vector Studio LLM example · 2 px = 1 mm · an L-shaped room, 300 x 200 mm -->
+  <rect data-vs-bg="1" width="800" height="600" fill="#1A1916"/>
+  <polygon data-vs="1" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" points="100,100 700,100 700,500 400,500 400,340 100,340"/>
+</svg>

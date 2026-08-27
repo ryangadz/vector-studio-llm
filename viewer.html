@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>vector-studio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --graphite:#23221E; --panel:#2C2B26; --bone:#F4F0E7;
+    --amber:#E6A23C; --teal:#5FB3A1; --dim:#8B887E;
+    --mono:"Cascadia Code","Consolas",monospace;
+  }
+  *{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:#E6A23C #1e1d19}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:#1e1d19;border-radius:6px}
+  ::-webkit-scrollbar-thumb{background:var(--amber);border-radius:6px}
+  ::-webkit-scrollbar-thumb:hover{background:#f0b458}
+  ::-webkit-scrollbar-corner{background:#1e1d19}
+  body{margin:0;background:var(--graphite);color:var(--bone);
+       font:14px/1.45 "Segoe UI",system-ui,sans-serif;height:100vh;
+       display:flex;flex-direction:column;overflow:hidden}
+  header{display:flex;align-items:center;gap:14px;padding:8px 14px;
+         background:var(--panel);border-bottom:1px solid #3a3933;flex:none}
+  header h1{font-size:14px;margin:0;font-weight:700;letter-spacing:.4px}
+  header h1 span{color:var(--amber)}
+  #fname{font-family:var(--mono);font-size:12px;color:var(--teal)}
+  #readout{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--bone);
+           background:var(--graphite);padding:3px 10px;border-radius:5px;min-width:190px;text-align:right}
+  #main{flex:1;display:flex;min-height:0}
+  #stageWrap{flex:1;overflow:auto;padding:24px;position:relative}
+  #stage{background:#1A1916;border:1px solid #3a3933;
+         box-shadow:0 2px 14px rgba(0,0,0,.5);border-radius:3px;
+         display:inline-block;line-height:0;cursor:crosshair}
+  #stage svg{display:block}
+  aside{width:300px;flex:none;background:var(--panel);border-left:1px solid #3a3933;
+        display:flex;flex-direction:column;min-height:0}
+  .ctl{padding:10px 12px;border-bottom:1px solid #3a3933;display:flex;flex-wrap:wrap;
+       gap:8px;align-items:center;font-size:13px}
+  .ctl label{display:flex;gap:6px;align-items:center;color:var(--bone);cursor:pointer}
+  .ctl input[type=number]{width:52px;background:var(--graphite);color:var(--bone);
+       border:1px solid #46443d;border-radius:4px;padding:3px 6px;font-family:var(--mono)}
+  button{background:var(--graphite);color:var(--bone);border:1px solid #46443d;
+         border-radius:5px;padding:4px 10px;font-size:12.5px;cursor:pointer}
+  button:hover{border-color:var(--amber);color:var(--amber)}
+  button.warn:hover{border-color:#d16a5a;color:#d16a5a}
+  button.mode{flex:1}
+  button.mode.on{background:var(--amber);color:var(--graphite);border-color:var(--amber);font-weight:700}
+  #updBtn{display:none;background:var(--amber);color:var(--graphite);
+          border-color:var(--amber);font-weight:700}
+  #updBtn.show{display:inline-block}
+  #updBtn:hover{color:var(--graphite);border-color:#f0b458;background:#f0b458}
+  #lenEdit{position:absolute;width:72px;background:var(--panel);color:var(--bone);
+           border:1.5px solid var(--amber);border-radius:5px;padding:3px 6px;
+           font:600 13px var(--mono);z-index:5;box-shadow:0 2px 8px rgba(0,0,0,.6)}
+  #zoomPct{font-family:var(--mono);color:var(--dim);min-width:44px;text-align:center}
+  #sketchCtl{display:none}
+  #sketchCtl.show{display:flex}
+  #hint{font-size:11.5px;color:var(--dim);line-height:1.6;width:100%}
+  #hint b{color:var(--bone);font-weight:600}
+  #pinHead{padding:8px 12px 4px;font-size:12px;color:var(--dim);
+           text-transform:uppercase;letter-spacing:.8px}
+  #pinList{flex:1;overflow-y:auto;padding:0 10px 10px;min-height:0}
+  .pin{display:grid;grid-template-columns:26px 1fr 20px;gap:6px;align-items:start;
+       padding:7px 6px;border-radius:6px;margin-bottom:2px}
+  .pin:hover{background:#35342e}
+  .pin .badge{width:22px;height:22px;border-radius:50%;background:var(--amber);
+       color:var(--graphite);font-weight:700;font-size:12px;display:flex;
+       align-items:center;justify-content:center;margin-top:1px}
+  .pin .mm{font-family:var(--mono);font-size:11.5px;color:var(--teal)}
+  .pin input{width:100%;background:transparent;border:none;border-bottom:1px dashed #46443d;
+       color:var(--bone);font-size:13px;padding:2px 0;outline:none}
+  .pin input:focus{border-bottom-color:var(--amber)}
+  .pin .del{background:none;border:none;color:var(--dim);font-size:15px;padding:0;line-height:1.4}
+  .pin .del:hover{color:#d16a5a}
+  #empty{color:var(--dim);font-size:13px;padding:10px 6px}
+  footer{padding:9px 12px;border-top:1px solid #3a3933;display:flex;gap:8px;align-items:center;flex:none}
+  #status{margin-left:auto;font-size:11.5px;color:var(--dim);font-family:var(--mono);text-align:right}
+  #status.live{color:var(--teal)} #status.err{color:#d16a5a} #status.hold{color:var(--amber)}
+  /* file picker */
+  #picker{padding:40px;max-width:640px}
+  #picker h2{font-weight:700;font-size:16px;margin-top:28px}
+  #picker a{display:block;color:var(--teal);font-family:var(--mono);font-size:13.5px;
+            text-decoration:none;padding:5px 8px;border-radius:5px}
+  #picker a:hover{background:var(--panel);color:var(--amber)}
+  #newForm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel);
+           padding:14px;border-radius:8px}
+  #newForm input{background:var(--graphite);color:var(--bone);border:1px solid #46443d;
+           border-radius:4px;padding:5px 8px;font-family:var(--mono)}
+  #newForm input[type=text]{width:160px}
+  #newForm input[type=number]{width:70px}
+  #newErr{color:#d16a5a;font-size:12.5px;width:100%}
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+         background:var(--panel);color:var(--amber);border:1px solid var(--amber);
+         padding:6px 16px;border-radius:20px;font-size:12.5px;opacity:0;
+         transition:opacity .25s;pointer-events:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>vector-<span>studio</span></h1>
+  <button id="homeBtn" title="picker: new sketch / open a drawing"
+          onclick="location.href='viewer.html'">＋ new / open</button>
+  <button id="updBtn" title="the file changed on disk while reload was paused">⟳ new updates</button>
+  <span id="fname"></span>
+  <span id="readout">—</span>
+</header>
+<div id="main">
+  <div id="stageWrap"><div id="stage"></div></div>
+  <aside>
+    <div class="ctl">
+      <button id="modePin" class="mode on">📍 pin</button>
+      <button id="modeSketch" class="mode">✏️ sketch</button>
+    </div>
+    <div class="ctl">
+      <label><input type="checkbox" id="gridChk" checked> mm grid</label>
+      <label>px/mm <input type="number" id="scaleIn" value="2" min="0.1" step="0.5"></label>
+    </div>
+    <div class="ctl">
+      <button id="zOut">−</button><span id="zoomPct">100%</span><button id="zIn">+</button>
+      <button id="zFit">fit</button><button id="z100">1:1</button>
+    </div>
+    <div class="ctl" id="sketchCtl">
+      <label><input type="checkbox" id="snapChk" checked> snap 1 mm</label>
+      <button id="undoBtn" title="Ctrl+Z">undo</button>
+      <button id="redoBtn" title="Ctrl+Shift+Z">redo</button>
+      <div id="hint"><b>click</b> add point · <b>click 1st point</b> close shape ·
+        <b>Enter</b> finish line · <b>Esc</b> cancel · <b>Backspace</b> drop last point ·
+        <b>drag dot</b> move · <b>Alt+click dot</b> delete ·
+        <b>Shift</b> straight lines · <b>click a line</b> add point on it ·
+        <b>double-click a line</b> type its length ·
+        <b>double-click a dot</b> corner radius (0 removes) ·
+        <b>drag empty space</b> box-select a whole shape ·
+        <b>drag selection</b> move it · <b>Del</b> delete it</div>
+    </div>
+    <div id="pinHead">pins — click the drawing</div>
+    <div id="pinList"><div id="empty">No pins yet. Click a spot on the drawing,
+      type what should change there, and tell your LLM to check pins.</div></div>
+    <footer>
+      <button id="copyBtn">Copy for LLM</button>
+      <button id="clearBtn" class="warn">Clear all</button>
+      <span id="status">…</span>
+    </footer>
+  </aside>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const qs = new URLSearchParams(location.search);
+const FILE = qs.get("file");
+const NS = "http://www.w3.org/2000/svg";
+
+const S = {
+  pxPerMm: 2, zoom: 1, mtime: null, pinsMtime: null, svgEl: null, vb: null,
+  origDims: null, pins: [], nextN: 1, saveTimer: null, dirty: false,
+  mode: "pin", drawing: null, dragging: null, dragEndAt: 0,
+  undoStack: [], redoStack: [], svgSaveTimer: null, svgDirty: false, saving: false,
+  selection: [], selecting: null,
+};
+let boxStart = null;   // pending box-select / move-selection drag
+let statusHold = 0;   // declared up top — a late declaration once dead-zoned setStatus
+let toastT = null;
+let pendingInserts = [];  // click-on-line inserts wait 300ms so a dblclick can cancel them
+
+/* ---------- no file -> picker + new-sketch form ---------- */
+if (!FILE) {
+  document.querySelector("#main").innerHTML = `<div id="picker">
+    <div id="newForm">
+      <b>new sketch</b>
+      <input type="text" id="nName" placeholder="kitchen-floorplan" spellcheck="false">
+      <button id="nGo">create</button>
+      <span style="color:var(--dim);font-size:12.5px">canvas grows as you sketch</span>
+      <div id="newErr"></div>
+    </div>
+    <h2>open a drawing</h2><div id="plist">loading…</div></div>`;
+  document.querySelector("aside")?.remove();
+  fetch("/api/list").then(r => r.json()).then(j => {
+    $("plist").innerHTML = j.files.length
+      ? j.files.map(f => `<a href="?file=${encodeURIComponent(f)}">${f}</a>`).join("")
+      : "No .svg files under the served root.";
+  }).catch(() => $("plist").textContent = "server not reachable");
+  $("nGo").onclick = async () => {
+    const body = { name: $("nName").value.trim() };
+    const j = await fetch("/api/new", { method: "POST",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(r => r.json()).catch(() => ({ error: "server not reachable" }));
+    if (j.error) { $("newErr").textContent = j.error; return; }
+    location.href = "?file=" + encodeURIComponent(j.file) + "&mode=sketch";
+  };
+  $("nName").addEventListener("keydown", e => { if (e.key === "Enter") $("nGo").click(); });
+} else {
+  $("fname").textContent = FILE;
+  document.title = FILE.split("/").pop() + " — vector-studio";
+  // init() is called at the end of the viewer block below
+}
+
+/* everything below runs only in viewer mode — the picker page replaces the
+   DOM these bindings need, and one null deref here kills the whole script */
+if (FILE) {
+
+async function init() {
+  await loadPins();
+  await loadSvg(true);
+  if (qs.get("mode") === "sketch") setMode("sketch");
+  setInterval(pollMtime, 750);
+  // background tabs get throttled — catch up the instant we're visible again
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) pollMtime(); });
+  $("updBtn").onclick = async () => {
+    if (S.drawing) cancelPath();
+    clearTimeout(S.svgSaveTimer); S.svgDirty = false;  // user chose the disk version
+    $("updBtn").classList.remove("show");
+    await loadPins();
+    await loadSvg(false);
+  };
+}
+
+/* ---------- artwork load / reload ---------- */
+async function loadSvg(first) {
+  const r = await fetch("/" + FILE + "?t=" + Date.now());
+  if (!r.ok) { setStatus("file not found", "err"); return; }
+  const doc = new DOMParser().parseFromString(await r.text(), "image/svg+xml");
+  const svg = doc.documentElement;
+  if (svg.nodeName !== "svg") { setStatus("not an svg", "err"); return; }
+  let vb = svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width
+    ? svg.viewBox.baseVal
+    : { x: 0, y: 0, width: parseFloat(svg.getAttribute("width")) || 800,
+        height: parseFloat(svg.getAttribute("height")) || 600 };
+  if (!svg.getAttribute("viewBox"))
+    svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.width} ${vb.height}`);
+  S.vb = { x: vb.x, y: vb.y, width: vb.width, height: vb.height };
+  S.origDims = { width: svg.getAttribute("width"), height: svg.getAttribute("height") };
+  svg.removeAttribute("width"); svg.removeAttribute("height");
+  $("stage").replaceChildren(svg);
+  S.svgEl = svg;
+  S.undoStack = []; S.redoStack = []; S.drawing = null; S.selection = []; S.selecting = null;
+  sketchEls().forEach(el => { if (el.tagName === "path") regenD(el); });  // self-heal derived d
+  if (first) fitZoom(); else applyZoom();
+  const m = await fetch("/api/mtime?file=" + encodeURIComponent(FILE)).then(r => r.json()).catch(() => null);
+  if (m && m.mtime) { S.mtime = m.mtime; S.pinsMtime = m.pins_mtime ?? 0; }
+  if (!first) toast("drawing reloaded");
+  setStatus("live", "live");
+}
+
+async function pollMtime() {
+  let m;
+  try { m = await (await fetch("/api/mtime?file=" + encodeURIComponent(FILE))).json(); }
+  catch { setStatus("server offline", "err"); return; }
+  if (m.error) { setStatus("file missing", "err"); return; }
+  const foreign = S.mtime !== null && m.mtime !== S.mtime;
+  if (S.drawing || S.svgDirty || S.saving) {
+    if (foreign && !S.saving) { $("updBtn").classList.add("show"); setStatus("new updates waiting", "hold"); }
+    else setStatus("sketching — reload paused", "hold");
+    return;
+  }
+  if (foreign) {
+    S.mtime = m.mtime;
+    $("updBtn").classList.remove("show");
+    await loadPins();      // a Code session may have cleared/edited pins too
+    await loadSvg(false);
+  } else if (S.pinsMtime !== null && (m.pins_mtime ?? 0) !== S.pinsMtime && !S.dirty) {
+    // sidecar changed on disk (e.g. a session cleared it after the SVG reload)
+    S.pinsMtime = m.pins_mtime ?? 0;
+    await loadPins();
+    drawOverlay();
+    toast("pins updated");
+  } else setStatus("live", "live");
+}
+
+/* ---------- zoom ---------- */
+function applyZoom() {
+  if (!S.svgEl) return;
+  S.svgEl.style.width = (S.vb.width * S.zoom) + "px";
+  $("zoomPct").textContent = Math.round(S.zoom * 100) + "%";
+  drawOverlay();
+}
+function fitZoom() {
+  const w = $("stageWrap").clientWidth - 60, h = $("stageWrap").clientHeight - 60;
+  S.zoom = (w > 40 && h > 40) ? Math.min(w / S.vb.width, h / S.vb.height) : 1;
+  applyZoom();
+}
+$("zIn").onclick  = () => { S.zoom *= 1.25; applyZoom(); };
+$("zOut").onclick = () => { S.zoom /= 1.25; applyZoom(); };
+$("zFit").onclick = fitZoom;
+$("z100").onclick = () => { S.zoom = 1; applyZoom(); };
+$("stageWrap").addEventListener("wheel", e => {
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+  S.zoom *= e.deltaY < 0 ? 1.15 : 1 / 1.15;
+  applyZoom();
+}, { passive: false });
+
+/* ---------- modes ---------- */
+function setMode(m) {
+  if (S.mode === "sketch" && m !== "sketch" && S.drawing) cancelPath();
+  S.mode = m;
+  $("modePin").classList.toggle("on", m === "pin");
+  $("modeSketch").classList.toggle("on", m === "sketch");
+  $("sketchCtl").classList.toggle("show", m === "sketch");
+  $("pinHead").textContent = m === "pin" ? "pins — click the drawing"
+                                         : "pins (read-only in sketch mode)";
+  drawOverlay();
+}
+$("modePin").onclick = () => setMode("pin");
+$("modeSketch").onclick = () => setMode("sketch");
+
+/* ---------- coords ---------- */
+function toUser(e) {
+  const ctm = S.svgEl.getScreenCTM();
+  if (!ctm) return null;
+  const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
+  return { x: p.x, y: p.y };
+}
+function snapU(u) {
+  if (!$("snapChk").checked) return { x: +u.x.toFixed(1), y: +u.y.toFixed(1) };
+  const s = S.pxPerMm;   // snap to whole mm
+  return { x: Math.round(u.x / s) * s, y: Math.round(u.y / s) * s };
+}
+// while drawing, pull x/y into line with earlier vertices of this path so
+// rectangles close square; returns the matched vertices for guide lines
+function alignSnap(p) {
+  const out = { p: { x: p.x, y: p.y }, gx: null, gy: null };
+  if (!S.drawing || !S.drawing.pts.length) return out;
+  const tol = 6 / S.zoom;
+  let bx = tol, by = tol;
+  for (const v of S.drawing.pts) {
+    const dx = Math.abs(p.x - v[0]), dy = Math.abs(p.y - v[1]);
+    if (dx <= bx) { bx = dx; out.p.x = v[0]; out.gx = v; }
+    if (dy <= by) { by = dy; out.p.y = v[1]; out.gy = v; }
+  }
+  return out;
+}
+// Shift held: constrain the point to 0/45/90° from the anchor vertex
+function orthoSnap(a, p) {
+  const dx = p.x - a[0], dy = p.y - a[1];
+  const oct = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+  const c = Math.cos(oct * Math.PI / 4), s = Math.sin(oct * Math.PI / 4);
+  const t = dx * c + dy * s;
+  return { x: a[0] + c * t, y: a[1] + s * t };
+}
+const mmOf = u => ({ x: u.x / S.pxPerMm, y: u.y / S.pxPerMm });
+const f1 = v => (Math.round(v * 10) / 10).toFixed(1);
+const inVb = u => u && u.x >= S.vb.x && u.y >= S.vb.y &&
+                  u.x <= S.vb.x + S.vb.width && u.y <= S.vb.y + S.vb.height;
+
+$("stageWrap").addEventListener("mousemove", e => {
+  if (!S.svgEl) return;
+  const u = toUser(e);
+  if (!inVb(u)) { $("readout").textContent = "—"; rubberTo(null); return; }
+  const mm = mmOf(u);
+  let txt = `x ${f1(mm.x)}  y ${f1(mm.y)} mm`;
+  if (S.drawing && S.drawing.pts.length) {
+    const last = S.drawing.pts[S.drawing.pts.length - 1];
+    const al = alignSnap(snapU(e.shiftKey ? orthoSnap(last, u) : u));
+    const su = al.p;
+    const len = Math.hypot(su.x - last[0], su.y - last[1]) / S.pxPerMm;
+    txt = `↔ ${f1(len)} mm · ` + txt;
+    rubberTo(su, al);
+  }
+  $("readout").textContent = txt;
+});
+
+/* ---------- sketch geometry helpers ----------
+   The MODEL is always a vertex list. A shape with no corner radii lives as a
+   plain <polygon>/<polyline points>. A shape with radii becomes a <path> whose
+   model rides in data-vs-pts / data-vs-fillets (radii in user units, keyed by
+   vertex index) and whose d is DERIVED — the viewer re-derives it after every
+   edit and self-heals it on load, so dots stay draggable forever. */
+const sketchEls = () => S.svgEl ? [...S.svgEl.querySelectorAll("polyline[data-vs],polygon[data-vs],path[data-vs]")] : [];
+const isClosed = el => el.tagName === "polygon" ||
+  (el.tagName === "path" && el.getAttribute("data-vs-closed") === "1");
+const getPts = el => (el.getAttribute("points") ?? el.getAttribute("data-vs-pts")).trim()
+  .split(/[\s,]+/).map(Number)
+  .reduce((a, v, i) => (i % 2 ? a[a.length - 1].push(v) : a.push([v]), a), []);
+const ptsStr = pts => pts.map(p => `${+p[0].toFixed(1)},${+p[1].toFixed(1)}`).join(" ");
+function setPts(el, pts) {
+  if (el.tagName === "path") { el.setAttribute("data-vs-pts", ptsStr(pts)); regenD(el); }
+  else el.setAttribute("points", ptsStr(pts));
+}
+function getFillets(el) {
+  const m = new Map();
+  for (const kv of (el.getAttribute("data-vs-fillets") || "").split(",")) {
+    const [i, r] = kv.split(":").map(Number);
+    if (Number.isInteger(i) && r > 0) m.set(i, r);
+  }
+  return m;
+}
+const STYLE_ATTRS = ["data-vs", "fill", "stroke", "stroke-width", "stroke-linejoin", "stroke-linecap"];
+function setFillets(el, map) {   // may convert the element; returns the live one
+  for (const [i, r] of [...map]) if (!(r > 0)) map.delete(i);
+  if (map.size && el.tagName !== "path") {          // gains its first radius -> path
+    const p = document.createElementNS(NS, "path");
+    for (const a of STYLE_ATTRS) if (el.getAttribute(a) !== null) p.setAttribute(a, el.getAttribute(a));
+    p.setAttribute("data-vs-pts", el.getAttribute("points"));
+    p.setAttribute("data-vs-closed", el.tagName === "polygon" ? "1" : "0");
+    el.replaceWith(p);
+    el = p;
+  }
+  if (!map.size && el.tagName === "path") {         // last radius removed -> back to poly
+    const t = document.createElementNS(NS, isClosed(el) ? "polygon" : "polyline");
+    for (const a of STYLE_ATTRS) if (el.getAttribute(a) !== null) t.setAttribute(a, el.getAttribute(a));
+    t.setAttribute("points", el.getAttribute("data-vs-pts"));
+    el.replaceWith(t);
+    return t;
+  }
+  if (el.tagName === "path") {
+    el.setAttribute("data-vs-fillets",
+      [...map].sort((a, b) => a[0] - b[0]).map(([i, r]) => `${i}:${+r.toFixed(1)}`).join(","));
+    regenD(el);
+  }
+  return el;
+}
+// tangent-arc fillet at each radiused vertex; radius shrinks to fit short edges
+function filletPathD(pts, fillets, closed) {
+  const n = pts.length;
+  if (n < 2) return "";
+  const seg = [];
+  for (let i = 0; i < n; i++) {
+    const r0 = fillets.get(i);
+    if (!(r0 > 0) || (!closed && (i === 0 || i === n - 1))) { seg.push({ pt: pts[i] }); continue; }
+    const prev = pts[(i - 1 + n) % n], next = pts[(i + 1) % n], c = pts[i];
+    const l1 = Math.hypot(c[0] - prev[0], c[1] - prev[1]);
+    const l2 = Math.hypot(next[0] - c[0], next[1] - c[1]);
+    if (l1 < 0.01 || l2 < 0.01) { seg.push({ pt: c }); continue; }
+    const v1 = [(prev[0] - c[0]) / l1, (prev[1] - c[1]) / l1];
+    const v2 = [(next[0] - c[0]) / l2, (next[1] - c[1]) / l2];
+    const theta = Math.acos(Math.max(-1, Math.min(1, v1[0] * v2[0] + v1[1] * v2[1])));
+    if (theta < 0.02 || theta > Math.PI - 0.02) { seg.push({ pt: c }); continue; }
+    let t = r0 / Math.tan(theta / 2), r = r0;
+    const tMax = 0.5 * Math.min(l1, l2);
+    if (t > tMax) { t = tMax; r = t * Math.tan(theta / 2); }
+    const T1 = [c[0] + v1[0] * t, c[1] + v1[1] * t];
+    const T2 = [c[0] + v2[0] * t, c[1] + v2[1] * t];
+    const sweep = (-v1[0] * v2[1] + v1[1] * v2[0]) > 0 ? 1 : 0;
+    seg.push({ pt: c, T1, T2, r, sweep });
+  }
+  const f = v => `${+v[0].toFixed(1)},${+v[1].toFixed(1)}`;
+  const arc = s => `A ${+s.r.toFixed(1)} ${+s.r.toFixed(1)} 0 0 ${s.sweep} ${f(s.T2)}`;
+  const emit = s => s.T1 ? `L ${f(s.T1)} ${arc(s)}` : `L ${f(s.pt)}`;
+  let d;
+  if (closed) {
+    const s0 = seg[0];
+    d = `M ${s0.T1 ? f(s0.T2) : f(s0.pt)}`;
+    for (let i = 1; i < n; i++) d += " " + emit(seg[i]);
+    d += s0.T1 ? ` L ${f(s0.T1)} ${arc(s0)} Z` : " Z";
+  } else {
+    d = `M ${f(seg[0].pt)}`;
+    for (let i = 1; i < n; i++) d += " " + emit(seg[i]);
+  }
+  return d;
+}
+function regenD(el) {
+  el.setAttribute("d", filletPathD(getPts(el), getFillets(el), isClosed(el)));
+}
+
+function newSketchEl(tag) {
+  const el = document.createElementNS(NS, tag);
+  el.setAttribute("data-vs", "1");
+  el.setAttribute("fill", "none");
+  el.setAttribute("stroke", "#ffffff");
+  el.setAttribute("stroke-width", "1.5");
+  el.setAttribute("stroke-linejoin", "round");
+  el.setAttribute("stroke-linecap", "round");
+  return el;
+}
+function insertSketchEl(el) {
+  const ov = S.svgEl.querySelector("#vs-overlay");
+  ov ? S.svgEl.insertBefore(el, ov) : S.svgEl.appendChild(el);
+}
+
+/* ---------- undo / redo ---------- */
+const snapshotSketch = () => sketchEls().map(el => el.outerHTML);
+function restoreSketch(snap) {
+  sketchEls().forEach(el => el.remove());
+  for (const html of snap) {
+    const d = new DOMParser().parseFromString(`<svg xmlns="${NS}">${html}</svg>`, "image/svg+xml");
+    insertSketchEl(d.documentElement.firstElementChild);
+  }
+  S.selection = [];
+  drawOverlay(); scheduleSvgSave();
+}
+function pushUndo() {
+  S.undoStack.push(snapshotSketch());
+  if (S.undoStack.length > 60) S.undoStack.shift();
+  S.redoStack = [];
+}
+function undo() {
+  if (S.drawing) { cancelPath(); return; }
+  const snap = S.undoStack.pop();
+  if (!snap) { toast("nothing to undo"); return; }
+  S.redoStack.push(snapshotSketch());
+  restoreSketch(snap);
+}
+function redo() {
+  if (S.drawing) return;
+  const snap = S.redoStack.pop();
+  if (!snap) { toast("nothing to redo"); return; }
+  S.undoStack.push(snapshotSketch());
+  restoreSketch(snap);
+}
+$("undoBtn").onclick = undo;
+$("redoBtn").onclick = redo;
+
+/* ---------- drawing paths ---------- */
+function startPath(pt) {
+  pushUndo();
+  const el = newSketchEl("polyline");
+  insertSketchEl(el);
+  S.drawing = { el, pts: [pt] };
+  setPts(el, S.drawing.pts);
+  drawOverlay();
+  maybeExpand(pt);
+}
+function addVertex(pt) {
+  S.drawing.pts.push(pt);
+  setPts(S.drawing.el, S.drawing.pts);
+  drawOverlay();
+  maybeExpand(pt);
+}
+
+/* canvas auto-grows: placing/dragging a point near an edge extends the
+   viewBox (and the background rect) 50 mm that way. Coordinates are
+   absolute — existing geometry never shifts (left/up growth goes negative). */
+function maybeExpand([px, py]) {
+  const m = 10 * S.pxPerMm, grow = 50 * S.pxPerMm;
+  let { x, y, width, height } = S.vb;
+  let changed = false;
+  if (px > x + width - m)  { width  = px - x + grow; changed = true; }
+  if (py > y + height - m) { height = py - y + grow; changed = true; }
+  if (px < x + m) { const nx = px - grow; width  += x - nx; x = nx; changed = true; }
+  if (py < y + m) { const ny = py - grow; height += y - ny; y = ny; changed = true; }
+  if (!changed) return;
+  S.vb = { x, y, width, height };
+  S.svgEl.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
+  const bg = S.svgEl.querySelector("rect[data-vs-bg]");
+  if (bg) { bg.setAttribute("x", x); bg.setAttribute("y", y);
+            bg.setAttribute("width", width); bg.setAttribute("height", height); }
+  applyZoom();
+  scheduleSvgSave();
+  toast("canvas grew");
+}
+function dropLastVertex() {
+  if (!S.drawing) return;
+  S.drawing.pts.pop();
+  if (!S.drawing.pts.length) { cancelPath(); return; }
+  setPts(S.drawing.el, S.drawing.pts);
+  drawOverlay();
+}
+function finishPath(close) {
+  if (!S.drawing) return;
+  if (S.drawing.pts.length < 2) { cancelPath(); return; }
+  if (close) {
+    const poly = newSketchEl("polygon");
+    setPts(poly, S.drawing.pts);
+    S.drawing.el.replaceWith(poly);
+  }
+  S.drawing = null;
+  rubberTo(null); drawOverlay(); scheduleSvgSave();
+  toast(close ? "shape closed" : "line finished");
+}
+function cancelPath() {
+  if (!S.drawing) return;
+  S.drawing.el.remove();
+  S.drawing = null;
+  S.undoStack.pop();   // drop the snapshot startPath pushed
+  rubberTo(null); drawOverlay();
+}
+
+/* ---------- segment hit-testing: insert points, exact lengths ---------- */
+function distToSeg(p, a, b) {
+  const vx = b[0] - a[0], vy = b[1] - a[1];
+  const L2 = vx * vx + vy * vy || 1;
+  let t = ((p.x - a[0]) * vx + (p.y - a[1]) * vy) / L2;
+  t = Math.max(0.05, Math.min(0.95, t));   // stay clear of the endpoint dots
+  const q = [a[0] + t * vx, a[1] + t * vy];
+  return { d: Math.hypot(p.x - q[0], p.y - q[1]), q };
+}
+function segmentAt(u, tolPx = 7) {
+  const tol = tolPx / S.zoom;
+  let best = null;
+  for (const el of sketchEls()) {
+    const pts = getPts(el);
+    const n = isClosed(el) ? pts.length : pts.length - 1;
+    for (let i = 0; i < n; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const r = distToSeg(u, a, b);
+      if (r.d <= tol && (!best || r.d < best.d)) best = { el, i, a, b, q: r.q, d: r.d };
+    }
+  }
+  return best;
+}
+function insertVertex(hit) {
+  pushUndo();
+  const pts = getPts(hit.el);
+  pts.splice(hit.i + 1, 0, [+hit.q[0].toFixed(1), +hit.q[1].toFixed(1)]);
+  setPts(hit.el, pts);
+  if (hit.el.tagName === "path") {         // radii are keyed by vertex index — shift them
+    const nm = new Map();
+    for (const [i, r] of getFillets(hit.el)) nm.set(i > hit.i ? i + 1 : i, r);
+    setFillets(hit.el, nm);
+  }
+  drawSketchLayer(); scheduleSvgSave();
+}
+function openLenEditor(hit, e) {
+  closeLenEditor();
+  const wrap = $("stageWrap"), r = wrap.getBoundingClientRect();
+  const inp = document.createElement("input");
+  inp.type = "number"; inp.step = "0.1"; inp.min = "0.1"; inp.id = "lenEdit";
+  inp.value = f1(Math.hypot(hit.b[0] - hit.a[0], hit.b[1] - hit.a[1]) / S.pxPerMm);
+  inp.style.left = (e.clientX - r.left + wrap.scrollLeft - 34) + "px";
+  inp.style.top = (e.clientY - r.top + wrap.scrollTop - 15) + "px";
+  wrap.appendChild(inp);
+  inp.focus(); inp.select();
+  inp.onkeydown = ev => {
+    ev.stopPropagation();
+    if (ev.key === "Enter") { applyLen(hit, parseFloat(inp.value)); closeLenEditor(); }
+    else if (ev.key === "Escape") closeLenEditor();
+  };
+  inp.onblur = () => setTimeout(closeLenEditor, 100);
+}
+function closeLenEditor() { $("lenEdit")?.remove(); }
+function openRadEditor(el, idx, e) {
+  if (!isClosed(el) && (idx === 0 || idx === getPts(el).length - 1)) {
+    toast("an end point can't take a radius"); return;
+  }
+  closeLenEditor();
+  const wrap = $("stageWrap"), r = wrap.getBoundingClientRect();
+  const inp = document.createElement("input");
+  inp.type = "number"; inp.step = "0.5"; inp.min = "0"; inp.id = "lenEdit";
+  inp.title = "corner radius in mm — 0 removes it";
+  inp.value = f1((getFillets(el).get(idx) || 0) / S.pxPerMm);
+  inp.style.left = (e.clientX - r.left + wrap.scrollLeft - 36) + "px";
+  inp.style.top = (e.clientY - r.top + wrap.scrollTop - 34) + "px";
+  wrap.appendChild(inp);
+  inp.focus(); inp.select();
+  inp.onkeydown = ev => {
+    ev.stopPropagation();
+    if (ev.key === "Enter") { applyRadius(el, idx, parseFloat(inp.value) || 0); closeLenEditor(); }
+    else if (ev.key === "Escape") closeLenEditor();
+  };
+  inp.onblur = () => setTimeout(closeLenEditor, 100);
+}
+function applyRadius(el, idx, mm) {
+  pushUndo();
+  const fm = getFillets(el);
+  if (mm > 0) fm.set(idx, mm * S.pxPerMm); else fm.delete(idx);
+  S.selection = [];                       // conversion may replace the element
+  setFillets(el, fm);
+  drawSketchLayer(); scheduleSvgSave();
+  toast(mm > 0 ? `corner radius ${f1(mm)} mm` : "radius removed");
+}
+/* parametric-style length edit: the edited side keeps its direction and the
+   change SLIDES the downstream geometry rigidly instead of rotating the
+   neighbor. Open line: the whole tail translates (nothing else changes shape).
+   Closed shape: the first downstream side parallel to the edited one absorbs
+   the change as pure lengthening (in a room, the opposite wall); if no
+   parallel side exists (triangle, freeform), the neighbor rotates as before —
+   there is no rotation-free answer in that case. */
+function applyLen(hit, mm) {
+  if (!(mm > 0)) return;
+  pushUndo();
+  const el = hit.el, pts = getPts(el);
+  const n = pts.length, closed = isClosed(el);
+  const i = hit.i, j = (i + 1) % n;
+  const L = Math.hypot(hit.b[0] - hit.a[0], hit.b[1] - hit.a[1]) || 1;
+  const ux = (hit.b[0] - hit.a[0]) / L, uy = (hit.b[1] - hit.a[1]) / L;
+  const dx = hit.a[0] + ux * mm * S.pxPerMm - hit.b[0];
+  const dy = hit.a[1] + uy * mm * S.pxPerMm - hit.b[1];
+  const move = k => { pts[k] = [+(pts[k][0] + dx).toFixed(1), +(pts[k][1] + dy).toFixed(1)]; };
+  let note = "";
+  if (!closed) {
+    for (let k = j; k < n; k++) move(k);
+    note = " · line slid along";
+  } else {
+    let absorb = -1;
+    for (let s = j; s !== i; s = (s + 1) % n) {
+      const p = pts[s], q = pts[(s + 1) % n];
+      const vL = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+      const cross = (ux * (q[1] - p[1]) - uy * (q[0] - p[0])) / vL;
+      if (Math.abs(cross) < 0.1) { absorb = s; break; }
+    }
+    if (absorb >= 0) {
+      for (let k = j; ; k = (k + 1) % n) { move(k); if (k === absorb) break; }
+      const p = pts[absorb], q = pts[(absorb + 1) % n];
+      note = ` · parallel side now ${f1(Math.hypot(q[0] - p[0], q[1] - p[1]) / S.pxPerMm)} mm`;
+    } else {
+      move(j);
+      note = " · neighbor rotated (no parallel side)";
+    }
+  }
+  setPts(el, pts);
+  drawSketchLayer(); scheduleSvgSave();
+  toast(`side set to ${f1(mm)} mm${note}`);
+}
+
+/* ---------- box-select: drag empty canvas; only fully-enclosed shapes select ---------- */
+function clearSelection() { S.selection = []; drawSketchLayer(); }
+function selBounds() {
+  let x1 = 1e9, y1 = 1e9, x2 = -1e9, y2 = -1e9;
+  for (const el of S.selection) for (const p of getPts(el)) {
+    x1 = Math.min(x1, p[0]); y1 = Math.min(y1, p[1]);
+    x2 = Math.max(x2, p[0]); y2 = Math.max(y2, p[1]);
+  }
+  return { x1, y1, x2, y2 };
+}
+function inSelBBox(u) {
+  if (!S.selection.length) return false;
+  const b = selBounds(), m = 8 / S.zoom;
+  return u.x >= b.x1 - m && u.x <= b.x2 + m && u.y >= b.y1 - m && u.y <= b.y2 + m;
+}
+function boxMove(e) {
+  if (!boxStart) return;
+  const u = toUser(e);
+  if (!u) return;
+  if (!boxStart.moved) {
+    if (Math.hypot(e.clientX - boxStart.screen[0], e.clientY - boxStart.screen[1]) < 5) return;
+    boxStart.moved = true;
+    boxStart.kind = (S.selection.length && inSelBBox(boxStart.u)) ? "move" : "box";
+    if (boxStart.kind === "move") {
+      pushUndo();
+      boxStart.orig = S.selection.map(el => ({ el, pts: getPts(el) }));
+    } else clearSelection();
+  }
+  if (boxStart.kind === "box") {
+    S.selecting = { a: boxStart.u, b: u };
+    drawSketchLayer();
+  } else {
+    let du = u.x - boxStart.u.x, dv = u.y - boxStart.u.y;
+    if (e.shiftKey) { const o = orthoSnap([0, 0], { x: du, y: dv }); du = o.x; dv = o.y; }
+    const ref = boxStart.orig[0].pts[0];
+    const sn = snapU({ x: ref[0] + du, y: ref[1] + dv });
+    const dx = sn.x - ref[0], dy = sn.y - ref[1];
+    for (const { el, pts } of boxStart.orig)
+      setPts(el, pts.map(p => [+(p[0] + dx).toFixed(1), +(p[1] + dy).toFixed(1)]));
+    drawSketchLayer();
+  }
+}
+function boxUp() {
+  window.removeEventListener("pointermove", boxMove);
+  window.removeEventListener("pointerup", boxUp);
+  if (!boxStart) return;
+  if (boxStart.kind === "box" && S.selecting) {
+    const { a, b } = S.selecting;
+    const x1 = Math.min(a.x, b.x) - 0.01, x2 = Math.max(a.x, b.x) + 0.01;
+    const y1 = Math.min(a.y, b.y) - 0.01, y2 = Math.max(a.y, b.y) + 0.01;
+    S.selection = sketchEls().filter(el => getPts(el).every(p =>
+      p[0] >= x1 && p[0] <= x2 && p[1] >= y1 && p[1] <= y2));
+    toast(S.selection.length
+      ? `${S.selection.length} shape${S.selection.length > 1 ? "s" : ""} selected — drag moves, Del deletes, Esc deselects`
+      : "no shape fully inside the box");
+    S.dragEndAt = Date.now();
+  } else if (boxStart.kind === "move") {
+    scheduleSvgSave();
+    S.dragEndAt = Date.now();
+  }
+  S.selecting = null;
+  boxStart = null;
+  drawSketchLayer();
+}
+
+/* ---------- clicks: pin mode vs sketch mode ---------- */
+let downAt = null;
+$("stageWrap").addEventListener("pointerdown", e => {
+  downAt = [e.clientX, e.clientY];
+  if (S.mode !== "sketch" || S.drawing || e.button !== 0) return;
+  const u = toUser(e);
+  if (!u) return;
+  boxStart = { u, screen: [e.clientX, e.clientY], moved: false, kind: null };
+  window.addEventListener("pointermove", boxMove);
+  window.addEventListener("pointerup", boxUp);
+});
+$("stageWrap").addEventListener("click", e => {
+  if (!S.svgEl || !downAt) return;
+  if (Date.now() - S.dragEndAt < 200) return;                       // just finished a handle drag
+  if (Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return; // was a drag/scroll
+  const u = toUser(e);
+  if (!inVb(u)) return;
+
+  if (S.mode === "sketch") {
+    if (!S.drawing) {
+      if (S.selection.length) { clearSelection(); return; }  // click-away deselects
+      const hit = segmentAt(u);
+      if (hit) {           // clicking a line adds a point there (dblclick cancels -> length editor)
+        const timer = setTimeout(() => {
+          insertVertex(hit);
+          pendingInserts = pendingInserts.filter(t => t !== timer);
+        }, 300);
+        pendingInserts.push(timer);
+        return;
+      }
+      const su = snapU(u);
+      startPath([su.x, su.y]);
+      return;
+    }
+    const last = S.drawing.pts[S.drawing.pts.length - 1];
+    const su = alignSnap(snapU(e.shiftKey ? orthoSnap(last, u) : u)).p;
+    const first = S.drawing.pts[0];
+    const ctm = S.svgEl.getScreenCTM();
+    const fs = new DOMPoint(first[0], first[1]).matrixTransform(ctm);
+    if (S.drawing.pts.length >= 3 && Math.hypot(e.clientX - fs.x, e.clientY - fs.y) < 10)
+      return finishPath(true);                                      // clicked back on the start
+    addVertex([su.x, su.y]);
+    return;
+  }
+
+  // pin mode
+  const mm = mmOf(u);
+  S.pins.push({ n: S.nextN++, user: { x: +u.x.toFixed(1), y: +u.y.toFixed(1) },
+                mm: { x: +f1(mm.x), y: +f1(mm.y) }, note: "" });
+  renderPins(); drawOverlay(); scheduleSave();
+  const inp = $("pinList").querySelector(`input[data-n="${S.nextN - 1}"]`);
+  if (inp) { inp.focus(); inp.scrollIntoView({ block: "nearest" }); }
+});
+$("stageWrap").addEventListener("dblclick", e => {
+  if (S.mode !== "sketch") return;
+  if (S.drawing) {
+    // the dblclick's two clicks added a duplicate vertex — drop it, then finish
+    const p = S.drawing.pts;
+    if (p.length >= 2) {
+      const [a, b] = [p[p.length - 2], p[p.length - 1]];
+      if (Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.01) p.pop();
+    }
+    finishPath(false);
+    return;
+  }
+  // dblclick on a line: cancel the pending single-click inserts, type its exact length
+  pendingInserts.forEach(clearTimeout); pendingInserts = [];
+  const u = toUser(e);
+  const hit = u && segmentAt(u);
+  if (hit) openLenEditor(hit, e);
+});
+
+/* ---------- keyboard ---------- */
+window.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  if (S.mode !== "sketch") return;
+  const mod = e.ctrlKey || e.metaKey;
+  if (e.key === "Enter") { finishPath(false); e.preventDefault(); }
+  else if (e.key === "Escape") { if (S.drawing) cancelPath(); else clearSelection(); }
+  else if (e.key === "Backspace") { dropLastVertex(); e.preventDefault(); }
+  else if (e.key === "Delete" && S.selection.length) {
+    pushUndo();
+    S.selection.forEach(el => el.remove());
+    clearSelection(); scheduleSvgSave();
+    toast("deleted — Ctrl+Z brings it back");
+  }
+  else if (mod && ((e.key.toLowerCase() === "z" && e.shiftKey) || e.key.toLowerCase() === "y")) { redo(); e.preventDefault(); }
+  else if (mod && e.key.toLowerCase() === "z") { undo(); e.preventDefault(); }
+});
+
+/* ---------- vertex dragging ---------- */
+function handleDown(e, el, idx) {
+  e.stopPropagation(); e.preventDefault();
+  if (e.altKey) {                       // Alt+click = delete vertex (or path when tiny)
+    pushUndo();
+    const pts = getPts(el);
+    pts.splice(idx, 1);
+    if (pts.length < 2) el.remove();
+    else {
+      setPts(el, pts);
+      if (el.tagName === "path") {      // drop this vertex's radius, shift the rest
+        const nm = new Map();
+        for (const [i, r] of getFillets(el)) { if (i !== idx) nm.set(i > idx ? i - 1 : i, r); }
+        setFillets(el, nm);
+      }
+    }
+    drawOverlay(); scheduleSvgSave();
+    return;
+  }
+  pushUndo();
+  S.dragging = { el, idx, moved: false };
+  window.addEventListener("pointermove", handleMove);
+  window.addEventListener("pointerup", handleUp);
+}
+function handleMove(e) {
+  if (!S.dragging) return;
+  const u = toUser(e);
+  if (!u) return;
+  const pts0 = getPts(S.dragging.el), i = S.dragging.idx;
+  const closed = isClosed(S.dragging.el);
+  const anchor = i > 0 ? pts0[i - 1]
+               : (closed && pts0.length > 2 ? pts0[pts0.length - 1]
+               : (pts0.length > 1 ? pts0[1] : null));
+  const su = snapU(e.shiftKey && anchor ? orthoSnap(anchor, u) : u);
+  const pts = pts0;
+  pts[S.dragging.idx] = [su.x, su.y];
+  setPts(S.dragging.el, pts);
+  S.dragging.moved = true;
+  const mm = mmOf({ x: su.x, y: su.y });
+  $("readout").textContent = `x ${f1(mm.x)}  y ${f1(mm.y)} mm`;
+  drawSketchLayer();
+}
+function handleUp() {
+  window.removeEventListener("pointermove", handleMove);
+  window.removeEventListener("pointerup", handleUp);
+  if (S.dragging && !S.dragging.moved) S.undoStack.pop();  // click, not a drag
+  if (S.dragging && S.dragging.moved) {
+    scheduleSvgSave();
+    const pts = getPts(S.dragging.el);
+    if (pts[S.dragging.idx]) maybeExpand(pts[S.dragging.idx]);
+  }
+  S.dragging = null;
+  S.dragEndAt = Date.now();
+}
+
+/* ---------- saving the SVG (sketch edits) ---------- */
+function scheduleSvgSave() {
+  S.svgDirty = true;
+  clearTimeout(S.svgSaveTimer);
+  S.svgSaveTimer = setTimeout(saveSvg, 400);
+}
+function serializeSvg() {
+  const c = S.svgEl.cloneNode(true);
+  c.querySelector("#vs-overlay")?.remove();
+  c.removeAttribute("style");
+  if (S.origDims.width) c.setAttribute("width", S.origDims.width);
+  if (S.origDims.height) c.setAttribute("height", S.origDims.height);
+  return new XMLSerializer().serializeToString(c);
+}
+async function saveSvg() {
+  if (S.drawing) { scheduleSvgSave(); return; }   // don't persist a half-drawn line
+  S.saving = true;
+  try {
+    const r = await fetch("/api/save", { method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file: FILE, svg: serializeSvg() }) });
+    if (!r.ok) throw 0;
+    const j = await r.json();
+    if (j.mtime) S.mtime = j.mtime;               // our own write isn't "news"
+    S.svgDirty = false;
+    setStatus("saved " + new Date().toLocaleTimeString(), "live");
+  } catch {
+    setStatus("save failed — retrying", "err");
+    clearTimeout(S.svgSaveTimer);
+    S.svgSaveTimer = setTimeout(saveSvg, 2000);   // svgDirty stays true until it lands
+  }
+  finally { S.saving = false; }
+}
+
+/* ---------- pins (unchanged from v0) ---------- */
+function renderPins() {
+  const list = $("pinList");
+  if (!S.pins.length) {
+    list.innerHTML = '<div id="empty">No pins yet. Click a spot on the drawing, type what should change there, and tell your LLM to check pins.</div>';
+    return;
+  }
+  list.innerHTML = S.pins.map(p => `
+    <div class="pin">
+      <div class="badge">${p.n}</div>
+      <div>
+        <div class="mm">${f1(p.mm.x)}, ${f1(p.mm.y)} mm</div>
+        <input data-n="${p.n}" value="${escAttr(p.note)}" placeholder="what changes here?">
+      </div>
+      <button class="del" data-n="${p.n}" title="delete pin">×</button>
+    </div>`).join("");
+  list.querySelectorAll("input").forEach(inp => {
+    inp.oninput = () => { pinByN(+inp.dataset.n).note = inp.value; scheduleSave(); };
+    inp.onkeydown = e => { if (e.key === "Enter") inp.blur(); };
+  });
+  list.querySelectorAll(".del").forEach(b => {
+    b.onclick = () => { S.pins = S.pins.filter(p => p.n !== +b.dataset.n);
+                        renderPins(); drawOverlay(); scheduleSave(); };
+  });
+}
+const pinByN = n => S.pins.find(p => p.n === n);
+const escAttr = s => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+
+$("clearBtn").onclick = () => {
+  if (!S.pins.length) return;
+  S.pins = []; S.nextN = 1;
+  renderPins(); drawOverlay(); scheduleSave();
+};
+$("copyBtn").onclick = () => {
+  const lines = [];
+  sketchEls().forEach((el, i) => {
+    const pts = getPts(el);
+    const closed = isClosed(el);
+    const segs = pts.slice(1).map((p, j) => [pts[j], p]);
+    if (closed && pts.length > 2) segs.push([pts[pts.length - 1], pts[0]]);
+    const sides = segs.map(([a, b]) => f1(Math.hypot(b[0] - a[0], b[1] - a[1]) / S.pxPerMm));
+    const fm = el.tagName === "path" ? getFillets(el) : new Map();
+    lines.push(`outline ${i + 1} (${closed ? "closed polygon" : "open polyline"}): ` +
+      pts.map(p => `(${f1(p[0] / S.pxPerMm)}, ${f1(p[1] / S.pxPerMm)})`).join(" ") +
+      ` — sides ${sides.join(", ")} mm` +
+      (fm.size ? ` — corner radii: ${[...fm].map(([v, r]) => `v${v + 1} r${f1(r / S.pxPerMm)}`).join(", ")} mm` : ""));
+  });
+  S.pins.forEach(p =>
+    lines.push(`pin ${p.n} @ (${f1(p.mm.x)}, ${f1(p.mm.y)}) mm — ${p.note || "(no note)"}`));
+  const txt = `${FILE} — ${lines.length ? "" : "empty, "}${S.pxPerMm} px/mm, mm from top-left, y down:\n` +
+              lines.join("\n");
+  navigator.clipboard.writeText(txt).then(() => toast("copied"));
+};
+
+async function loadPins() {
+  let j;
+  try { j = await (await fetch("/api/pins?file=" + encodeURIComponent(FILE))).json(); }
+  catch { return; }
+  if (j && Array.isArray(j.pins)) {
+    S.pins = j.pins;
+    S.nextN = S.pins.reduce((m, p) => Math.max(m, p.n), 0) + 1;
+    if (j.pxPerMm) { S.pxPerMm = j.pxPerMm; $("scaleIn").value = j.pxPerMm; }
+  }
+  renderPins();
+}
+function scheduleSave() {
+  S.dirty = true;
+  clearTimeout(S.saveTimer);
+  S.saveTimer = setTimeout(savePins, 500);
+}
+async function savePins() {
+  const data = {
+    pxPerMm: S.pxPerMm,
+    convention: "mm measured in SVG user units / pxPerMm, origin = viewBox top-left, y down",
+    pins: S.pins,
+  };
+  try {
+    const r = await fetch("/api/pins", { method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file: FILE, data }) });
+    if (!r.ok) throw 0;
+    const j = await r.json();
+    if (j.pins_mtime) S.pinsMtime = j.pins_mtime;  // our own write isn't "news"
+    S.dirty = false;
+    setStatus("saved " + new Date().toLocaleTimeString(), "live");
+  } catch {
+    setStatus("pin save failed — retrying", "err");
+    clearTimeout(S.saveTimer);
+    S.saveTimer = setTimeout(savePins, 2000);
+  }
+}
+
+/* ---------- overlay: grid + pins + sketch handles (DOM only — never saved) ---------- */
+function drawOverlay() {
+  if (!S.svgEl) return;
+  S.svgEl.querySelector("#vs-overlay")?.remove();
+  const g = document.createElementNS(NS, "g");
+  g.setAttribute("id", "vs-overlay");
+  const grid = document.createElementNS(NS, "g");
+  grid.setAttribute("id", "vs-grid"); grid.setAttribute("pointer-events", "none");
+  if ($("gridChk").checked) grid.appendChild(gridG());
+  const pins = document.createElementNS(NS, "g");
+  pins.setAttribute("id", "vs-pins"); pins.setAttribute("pointer-events", "none");
+  pins.appendChild(pinsG());
+  const sk = document.createElementNS(NS, "g");
+  sk.setAttribute("id", "vs-sketch");
+  g.append(grid, pins, sk);
+  S.svgEl.appendChild(g);
+  drawSketchLayer();
+}
+function segTextEl(z) {
+  const t = document.createElementNS(NS, "text");
+  t.setAttribute("text-anchor", "middle");
+  t.setAttribute("dominant-baseline", "central");
+  t.setAttribute("font-size", 14 / z);
+  t.setAttribute("font-weight", "600");
+  t.setAttribute("font-family", "Segoe UI, sans-serif");
+  t.setAttribute("fill", "#5FB3A1");
+  t.setAttribute("stroke", "#1A1916"); t.setAttribute("stroke-width", 3.5 / z);
+  t.setAttribute("paint-order", "stroke");
+  t.setAttribute("pointer-events", "none");
+  return t;
+}
+// place the length text beside the segment, offset along its normal — never on the line
+function placeSegText(t, a, b, z) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
+  let nx = -dy / L, ny = dx / L;
+  if (ny > 0) { nx = -nx; ny = -ny; }   // keep the label on the upper side
+  const off = 13 / z;
+  t.setAttribute("x", (a[0] + b[0]) / 2 + nx * off);
+  t.setAttribute("y", (a[1] + b[1]) / 2 + ny * off);
+  t.textContent = f1(L / S.pxPerMm);
+}
+function segLabel(parent, a, b, z) {
+  if (Math.hypot(b[0] - a[0], b[1] - a[1]) / S.pxPerMm < 0.05) return;
+  const t = segTextEl(z);
+  placeSegText(t, a, b, z);
+  parent.appendChild(t);
+}
+function dashRect(x1, y1, x2, y2, color, op) {
+  const r = document.createElementNS(NS, "rect");
+  r.setAttribute("x", x1); r.setAttribute("y", y1);
+  r.setAttribute("width", Math.max(0, x2 - x1)); r.setAttribute("height", Math.max(0, y2 - y1));
+  r.setAttribute("fill", "none"); r.setAttribute("stroke", color);
+  r.setAttribute("stroke-opacity", op); r.setAttribute("stroke-dasharray", "6 4");
+  r.setAttribute("vector-effect", "non-scaling-stroke");
+  r.setAttribute("pointer-events", "none");
+  return r;
+}
+function drawSketchLayer() {
+  const sk = S.svgEl.querySelector("#vs-sketch");
+  if (!sk) return;
+  sk.replaceChildren();
+  if (S.mode !== "sketch") return;
+  const z = S.zoom;
+  // selection halos + bbox (drawn first so dots stay on top)
+  S.selection = S.selection.filter(el => el.isConnected);
+  for (const el of S.selection) {
+    const halo = document.createElementNS(NS, el.tagName);
+    if (el.tagName === "path") halo.setAttribute("d", el.getAttribute("d"));
+    else halo.setAttribute("points", el.getAttribute("points"));
+    halo.setAttribute("fill", "none");
+    halo.setAttribute("stroke", "#E6A23C"); halo.setAttribute("stroke-opacity", ".35");
+    halo.setAttribute("stroke-width", 7 / z);
+    halo.setAttribute("stroke-linejoin", "round");
+    halo.setAttribute("pointer-events", "none");
+    sk.appendChild(halo);
+  }
+  if (S.selection.length) {
+    const b = selBounds();
+    sk.appendChild(dashRect(b.x1 - 6 / z, b.y1 - 6 / z, b.x2 + 6 / z, b.y2 + 6 / z, "#E6A23C", ".7"));
+  }
+  if (S.selecting) {
+    const { a, b } = S.selecting;
+    sk.appendChild(dashRect(Math.min(a.x, b.x), Math.min(a.y, b.y),
+                            Math.max(a.x, b.x), Math.max(a.y, b.y), "#5FB3A1", ".8"));
+  }
+  // lengths show only where they're changing: the sides touching a dragged dot
+  if (S.dragging) {
+    const pts = getPts(S.dragging.el), i = S.dragging.idx;
+    const closed = isClosed(S.dragging.el);
+    const prev = i > 0 ? pts[i - 1] : (closed && pts.length > 2 ? pts[pts.length - 1] : null);
+    const next = i < pts.length - 1 ? pts[i + 1] : (closed && pts.length > 2 ? pts[0] : null);
+    if (prev) segLabel(sk, prev, pts[i], z);
+    if (next) segLabel(sk, pts[i], next, z);
+  }
+  for (const el of sketchEls()) {
+    const pts = getPts(el);
+    pts.forEach(([x, y], idx) => {
+      const h = document.createElementNS(NS, "circle");
+      h.setAttribute("cx", x); h.setAttribute("cy", y); h.setAttribute("r", 4.5 / z);
+      h.setAttribute("fill", el === S.drawing?.el && idx === 0 ? "#5FB3A1" : "#E6A23C");
+      h.setAttribute("stroke", "#23221E"); h.setAttribute("stroke-width", 1.2 / z);
+      h.setAttribute("pointer-events", "all");
+      h.style.cursor = "move";
+      if (!S.drawing) {
+        h.addEventListener("pointerdown", e => handleDown(e, el, idx));
+        h.addEventListener("dblclick", e => { e.stopPropagation(); openRadEditor(el, idx, e); });
+      }
+      sk.appendChild(h);
+    });
+  }
+  // rubber band line while drawing
+  const rb = document.createElementNS(NS, "line");
+  rb.setAttribute("id", "vs-rubber");
+  rb.setAttribute("stroke", "#8B887E"); rb.setAttribute("stroke-dasharray", "4 3");
+  rb.setAttribute("vector-effect", "non-scaling-stroke");
+  rb.setAttribute("pointer-events", "none");
+  rb.setAttribute("visibility", "hidden");
+  sk.appendChild(rb);
+  const rl = segTextEl(z);
+  rl.setAttribute("id", "vs-rublabel");
+  rl.setAttribute("visibility", "hidden");
+  sk.appendChild(rl);
+  for (const id of ["vs-gx", "vs-gy"]) {   // alignment guide lines
+    const gl = document.createElementNS(NS, "line");
+    gl.setAttribute("id", id);
+    gl.setAttribute("stroke", "#5FB3A1"); gl.setAttribute("stroke-opacity", ".55");
+    gl.setAttribute("stroke-dasharray", "5 4");
+    gl.setAttribute("vector-effect", "non-scaling-stroke");
+    gl.setAttribute("pointer-events", "none");
+    gl.setAttribute("visibility", "hidden");
+    sk.appendChild(gl);
+  }
+}
+function rubberTo(su, al) {
+  const rb = S.svgEl?.querySelector("#vs-rubber");
+  const rl = S.svgEl?.querySelector("#vs-rublabel");
+  const gx = S.svgEl?.querySelector("#vs-gx");
+  const gy = S.svgEl?.querySelector("#vs-gy");
+  if (!rb) return;
+  if (!su || !S.drawing || !S.drawing.pts.length) {
+    rb.setAttribute("visibility", "hidden");
+    rl?.setAttribute("visibility", "hidden");
+    gx?.setAttribute("visibility", "hidden");
+    gy?.setAttribute("visibility", "hidden");
+    return;
+  }
+  const last = S.drawing.pts[S.drawing.pts.length - 1];
+  rb.setAttribute("x1", last[0]); rb.setAttribute("y1", last[1]);
+  rb.setAttribute("x2", su.x);    rb.setAttribute("y2", su.y);
+  rb.setAttribute("visibility", "visible");
+  if (rl) {
+    placeSegText(rl, last, [su.x, su.y], S.zoom);
+    rl.setAttribute("visibility", "visible");
+  }
+  if (gx) {
+    if (al?.gx) { gx.setAttribute("x1", al.gx[0]); gx.setAttribute("y1", al.gx[1]);
+                  gx.setAttribute("x2", su.x); gx.setAttribute("y2", su.y);
+                  gx.setAttribute("visibility", "visible"); }
+    else gx.setAttribute("visibility", "hidden");
+  }
+  if (gy) {
+    if (al?.gy) { gy.setAttribute("x1", al.gy[0]); gy.setAttribute("y1", al.gy[1]);
+                  gy.setAttribute("x2", su.x); gy.setAttribute("y2", su.y);
+                  gy.setAttribute("visibility", "visible"); }
+    else gy.setAttribute("visibility", "hidden");
+  }
+}
+function gridG() {
+  const g = document.createElementNS(NS, "g");
+  const { x, y, width, height } = S.vb, s = S.pxPerMm;
+  const step5 = 5 * s;
+  const minor = step5 * S.zoom >= 6;
+  for (let gx = Math.ceil(x / step5) * step5; gx <= x + width; gx += step5) {
+    const is10 = Math.round(gx / step5) % 2 === 0;
+    if (!is10 && !minor) continue;
+    g.appendChild(line(gx, y, gx, y + height, is10 ? .3 : .12));
+  }
+  for (let gy = Math.ceil(y / step5) * step5; gy <= y + height; gy += step5) {
+    const is10 = Math.round(gy / step5) % 2 === 0;
+    if (!is10 && !minor) continue;
+    g.appendChild(line(x, gy, x + width, gy, is10 ? .3 : .12));
+  }
+  return g;
+}
+function line(x1, y1, x2, y2, op) {
+  const l = document.createElementNS(NS, "line");
+  l.setAttribute("x1", x1); l.setAttribute("y1", y1);
+  l.setAttribute("x2", x2); l.setAttribute("y2", y2);
+  l.setAttribute("stroke", "#5FB3A1"); l.setAttribute("stroke-opacity", op);
+  l.setAttribute("vector-effect", "non-scaling-stroke");
+  return l;
+}
+function pinsG() {
+  const g = document.createElementNS(NS, "g");
+  const z = S.zoom;
+  for (const p of S.pins) {
+    const { x, y } = p.user;
+    const dot = document.createElementNS(NS, "circle");
+    dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("r", 2.5 / z);
+    dot.setAttribute("fill", "#E6A23C"); dot.setAttribute("stroke", "#23221E");
+    dot.setAttribute("stroke-width", 1 / z);
+    const lead = document.createElementNS(NS, "line");
+    lead.setAttribute("x1", x); lead.setAttribute("y1", y);
+    lead.setAttribute("x2", x + 12 / z); lead.setAttribute("y2", y - 12 / z);
+    lead.setAttribute("stroke", "#E6A23C"); lead.setAttribute("stroke-width", 1.2 / z);
+    const bub = document.createElementNS(NS, "circle");
+    bub.setAttribute("cx", x + 18 / z); bub.setAttribute("cy", y - 18 / z);
+    bub.setAttribute("r", 9 / z);
+    bub.setAttribute("fill", "#E6A23C"); bub.setAttribute("stroke", "#23221E");
+    bub.setAttribute("stroke-width", 1.2 / z);
+    const t = document.createElementNS(NS, "text");
+    t.setAttribute("x", x + 18 / z); t.setAttribute("y", y - 18 / z);
+    t.setAttribute("text-anchor", "middle"); t.setAttribute("dominant-baseline", "central");
+    t.setAttribute("font-size", 11 / z); t.setAttribute("font-weight", "700");
+    t.setAttribute("fill", "#23221E"); t.setAttribute("font-family", "Segoe UI, sans-serif");
+    t.textContent = p.n;
+    g.append(lead, dot, bub, t);
+  }
+  return g;
+}
+
+/* ---------- controls ---------- */
+$("gridChk").onchange = drawOverlay;
+$("scaleIn").onchange = () => {
+  const v = parseFloat($("scaleIn").value);
+  if (!(v > 0)) return;
+  S.pxPerMm = v;
+  for (const p of S.pins) p.mm = { x: +f1(p.user.x / v), y: +f1(p.user.y / v) };
+  renderPins(); drawOverlay(); scheduleSave();
+};
+
+/* ---------- status/toast ---------- */
+function setStatus(msg, cls) {
+  const sticky = msg.startsWith("saved") || cls === "err";
+  if (!sticky && Date.now() < statusHold) return;  // don't stomp a fresh "saved"
+  if (sticky) statusHold = Date.now() + 2500;
+  const s = $("status"); s.textContent = msg; s.className = cls || "";
+}
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.style.opacity = 1;
+  clearTimeout(toastT); toastT = setTimeout(() => t.style.opacity = 0, 3000);
+}
+
+init();
+window.vs = { S, setMode, cancelPath, undo, redo, clearSelection, drawOverlay };  // console/debug access
+} // end if (FILE)
+</script>
+</body>
+</html>

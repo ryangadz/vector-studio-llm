@@ -1,0 +1,6 @@
+# pin sidecars are a live conversation between you and your agent, not a record
+*.pins.json
+*.pins.tmp
+# atomic-write leftovers (only if a save was interrupted)
+*.svg.tmp
+__pycache__/
