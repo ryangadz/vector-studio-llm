@@ -4,6 +4,8 @@
 
 ![A rough floor plan in the viewer: white sketch lines with draggable corner dots on a mm grid, and two numbered pins with notes for the LLM](docs/ui-floor-plan.png)
 
+![The whole loop in 17 seconds: sketch a rough island, pin a note asking for exact dimensions and rounded corners, the agent edits the SVG on disk, the viewer reloads with real fillets](docs/loop.gif)
+
 A two-file, no-build, local sketching loop for making vector drawings **with**
 a coding agent (Claude Code, Cursor, aider, a local model — anything that can
 edit files). You draw rough shapes and point at things; the LLM does the math.
@@ -27,6 +29,22 @@ any file-editing agent already works with it.
 
 ## Quickstart
 
+Get the code — either way works:
+
+```bash
+git clone https://github.com/ryangadz/vector-studio-llm && cd vector-studio-llm
+```
+
+or **Code ▸ Download ZIP** on this page, unzip, and open the folder.
+
+Check your Python is 3.10+ (that's the only requirement):
+
+```bash
+python --version
+```
+
+Then start the viewer:
+
 ```bash
 python serve.py
 ```
@@ -35,7 +53,20 @@ Open http://127.0.0.1:8103/ — pick an example (or create a new sketch, it just
 takes a name; the canvas grows as you draw). On Windows, `vector-studio.bat`
 starts the server and opens the browser in one double-click.
 
-Requires Python 3.10+. The viewer is a single `viewer.html`; no build step.
+The viewer is a single `viewer.html`; no build step.
+
+## Your first loop
+
+1. Open `examples/floor-plan.svg` from the file list.
+2. Drop two 📍 pins: click a wall, type what should change there ("make this
+   wall 2400 mm"), click a corner ("round this corner, r 100"). Pins autosave
+   to `examples/floor-plan.svg.pins.json`.
+3. In a coding agent running in this folder (Claude Code, Cursor, aider —
+   anything that edits files), type this sentence, literally:
+
+   > Check the pins in examples/floor-plan.svg.pins.json and make the edits.
+
+4. The viewer reloads with the edits. Drag a dot, drop more pins, go again.
 
 ## The loop
 
@@ -96,6 +127,26 @@ What your LLM needs to know (also summarized by the **Copy for LLM** button):
   is mid-draw and announces changed files with a "new updates" button; last
   writer wins.
 
+The same contract, written to be handed to an agent, lives in
+[AGENTS.md](AGENTS.md) at the repo root — stacks that auto-ingest it are
+already briefed.
+
+## No agent? Plain chat works
+
+Any chat LLM closes the loop too — the paste-back is just manual:
+
+1. Sketch and pin as usual, then hit **Copy for LLM** (bottom of the pin
+   panel). It copies a plain-text description of the drawing: every outline's
+   coordinates and side lengths in mm, plus your pins and notes.
+2. Paste that into any chat LLM, along with the SVG file's contents, and ask
+   for the edited SVG back.
+3. Paste the returned SVG over the file's contents in any text editor and
+   save — the viewer notices the change and reloads.
+
+That's one honest manual paste per round instead of an agent doing it for
+you. Never used git? The **Download ZIP** route in
+[Quickstart](#quickstart) is all the setup there is.
+
 ## What this is not
 
 A vector illustrator. The scope rule this tool holds: **the page gets what
@@ -110,6 +161,8 @@ If a drawing outgrows the loop, it's a plain SVG — open it in Inkscape.
   file-editing agent closes the loop.
 - Mode 1 (maybe): an optional bring-your-own-key bridge (env var only,
   server-side) with a "send pins" action for agents that can't touch files.
+- MCP server: probably never — the filesystem already is the interface; open
+  an issue if your stack disagrees.
 
 MIT licensed. Built by [Ryan Gadz](https://github.com/ryangadz) and Claude,
 through the loop itself — the first drawings it edited were the sketches that
