@@ -164,6 +164,16 @@ The same contract, written to be handed to an agent, lives in
 [AGENTS.md](AGENTS.md) at the repo root — stacks that auto-ingest it are
 already briefed.
 
+## Use with Claude
+
+This repo ships the contract as a ready-made Claude skill:
+[skills/vector-studio/](skills/vector-studio/). Copy that folder into a
+project's `.claude/skills/` (or your personal skills directory) and Claude
+Code sessions pick it up automatically whenever sketches or pins come up —
+no need to point them at this README first. It's a convenience, not a
+requirement: any other agent keeps working from the contract above and
+[AGENTS.md](AGENTS.md) exactly as before.
+
 ## No agent? Plain chat works
 
 Any chat LLM closes the loop too — the paste-back is just manual:
