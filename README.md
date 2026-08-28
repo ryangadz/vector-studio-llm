@@ -114,6 +114,26 @@ round-trip is one sentence, and the agent regenerates from your model.
   `examples/studio-apartment.svg` is a 20'×14' studio to try it on. Under
   the hood nothing changes: files stay SVG user units at px/mm.
 
+## Multiple projects
+
+A "project" is nothing more than a folder with SVGs in it (plus their
+`.pins.json` sidecars once you drop pins). One install serves any of them —
+point the server at the folder:
+
+```bash
+python serve.py --root path/to/project
+```
+
+Run several projects at once by giving each its own port:
+
+```bash
+python serve.py --root ~/sketches/kitchen --port 8103
+python serve.py --root ~/drawings/logo --port 8104
+```
+
+The viewer always loads from the install folder, so project folders stay
+clean — nothing in them but your drawings and their sidecars.
+
 ## The agent contract
 
 What your LLM needs to know (also summarized by the **Copy for LLM** button):
