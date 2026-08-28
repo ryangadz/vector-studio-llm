@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """vector-studio v0 server — stdlib only, no deps.
 
-Serves this folder on http://127.0.0.1:8103 and gives viewer.html three
-small APIs:
+Serves this folder on http://127.0.0.1:8103 (default port) and gives
+viewer.html three small APIs:
 
   GET  /api/list                 -> {"files": ["test/plate-v2-layout.svg", ...]}
   GET  /api/mtime?file=<rel.svg> -> {"mtime": ..., "pins_mtime": ...}
@@ -14,8 +14,9 @@ small APIs:
   POST /api/new                  -> body {"name": "kitchen", "w_mm": 400, "h_mm": 300}
                                     creates sketches/<name>.svg (blank, 2 px = 1 mm)
 
-Run:  python serve.py            (root = this folder)
-      python serve.py --root ..  (serve a different folder, e.g. repo root)
+Run:  python serve.py                          (root = this folder)
+      python serve.py --root ..                (serve a different folder)
+      python serve.py --root .. --port 8104    (second project, own port)
 """
 
 import argparse
@@ -178,11 +179,12 @@ def main():
     global ROOT
     ap = argparse.ArgumentParser(description="vector-studio v0 server")
     ap.add_argument("--root", default=None, help="folder to serve (default: this folder)")
+    ap.add_argument("--port", type=int, default=PORT, help=f"port to listen on (default: {PORT})")
     args = ap.parse_args()
     if args.root:
         ROOT = Path(args.root).resolve()
-    print(f"vector-studio v0 · http://{HOST}:{PORT}/viewer.html · root {ROOT}")
-    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+    print(f"vector-studio v0 · http://{HOST}:{args.port}/viewer.html · root {ROOT}")
+    ThreadingHTTPServer((HOST, args.port), Handler).serve_forever()
 
 
 if __name__ == "__main__":
