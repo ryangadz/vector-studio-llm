@@ -39,6 +39,8 @@
   .ctl label{display:flex;gap:6px;align-items:center;color:var(--bone);cursor:pointer}
   .ctl input[type=number]{width:52px;background:var(--graphite);color:var(--bone);
        border:1px solid #46443d;border-radius:4px;padding:3px 6px;font-family:var(--mono)}
+  .ctl select{background:var(--graphite);color:var(--bone);border:1px solid #46443d;
+       border-radius:4px;padding:3px 4px;font:12.5px var(--mono);cursor:pointer}
   button{background:var(--graphite);color:var(--bone);border:1px solid #46443d;
          border-radius:5px;padding:4px 10px;font-size:12.5px;cursor:pointer}
   button:hover{border-color:var(--amber);color:var(--amber)}
@@ -112,7 +114,12 @@
       <button id="modeSketch" class="mode">✏️ sketch</button>
     </div>
     <div class="ctl">
-      <label><input type="checkbox" id="gridChk" checked> mm grid</label>
+      <label><input type="checkbox" id="gridChk" checked> grid</label>
+      <label>unit <select id="unitSel">
+        <option value="mm" selected>mm</option><option value="cm">cm</option>
+        <option value="m">m</option><option value="in">in</option>
+        <option value="ftin">ft-in</option>
+      </select></label>
       <label>px/mm <input type="number" id="scaleIn" value="2" min="0.1" step="0.5"></label>
     </div>
     <div class="ctl">
@@ -120,14 +127,14 @@
       <button id="zFit">fit</button><button id="z100">1:1</button>
     </div>
     <div class="ctl" id="sketchCtl">
-      <label><input type="checkbox" id="snapChk" checked> snap 1 mm</label>
+      <label><input type="checkbox" id="snapChk" checked> snap <span id="snapLbl">1 mm</span></label>
       <button id="undoBtn" title="Ctrl+Z">undo</button>
       <button id="redoBtn" title="Ctrl+Shift+Z">redo</button>
       <div id="hint"><b>click</b> add point · <b>click 1st point</b> close shape ·
         <b>Enter</b> finish line · <b>Esc</b> cancel · <b>Backspace</b> drop last point ·
         <b>drag dot</b> move · <b>Alt+click dot</b> delete ·
         <b>Shift</b> straight lines · <b>click a line</b> add point on it ·
-        <b>double-click a line</b> type its length ·
+        <b>double-click a line</b> type its length (suffixes ok: 350mm, 3.5m, 12'6") ·
         <b>double-click a dot</b> corner radius (0 removes) ·
         <b>drag empty space</b> box-select a whole shape ·
         <b>drag selection</b> move it · <b>Del</b> delete it</div>
@@ -152,7 +159,7 @@ const FILE = qs.get("file");
 const NS = "http://www.w3.org/2000/svg";
 
 const S = {
-  pxPerMm: 2, zoom: 1, mtime: null, pinsMtime: null, svgEl: null, vb: null,
+  pxPerMm: 2, unit: "mm", zoom: 1, mtime: null, pinsMtime: null, svgEl: null, vb: null,
   origDims: null, pins: [], nextN: 1, saveTimer: null, dirty: false,
   mode: "pin", drawing: null, dragging: null, dragEndAt: 0,
   undoStack: [], redoStack: [], svgSaveTimer: null, svgDirty: false, saving: false,
@@ -233,6 +240,10 @@ async function loadSvg(first) {
   svg.removeAttribute("width"); svg.removeAttribute("height");
   $("stage").replaceChildren(svg);
   S.svgEl = svg;
+  // the drawing's own unit/scale attributes win over viewer state + sidecar
+  const sc = parseFloat(svg.getAttribute("data-vs-scale"));
+  if (sc > 0) { S.pxPerMm = sc; $("scaleIn").value = sc; }
+  setUnit(svg.getAttribute("data-vs-unit") || S.unit, false);
   S.undoStack = []; S.redoStack = []; S.drawing = null; S.selection = []; S.selecting = null;
   sketchEls().forEach(el => { if (el.tagName === "path") regenD(el); });  // self-heal derived d
   if (first) fitZoom(); else applyZoom();
@@ -313,8 +324,8 @@ function toUser(e) {
 }
 function snapU(u) {
   if (!$("snapChk").checked) return { x: +u.x.toFixed(1), y: +u.y.toFixed(1) };
-  const s = S.pxPerMm;   // snap to whole mm
-  return { x: Math.round(u.x / s) * s, y: Math.round(u.y / s) * s };
+  const s = UNITS[S.unit].snapMm * S.pxPerMm;   // snap step follows the unit
+  return { x: +(Math.round(u.x / s) * s).toFixed(1), y: +(Math.round(u.y / s) * s).toFixed(1) };
 }
 // while drawing, pull x/y into line with earlier vertices of this path so
 // rectangles close square; returns the matched vertices for guide lines
@@ -340,6 +351,56 @@ function orthoSnap(a, p) {
 }
 const mmOf = u => ({ x: u.x / S.pxPerMm, y: u.y / S.pxPerMm });
 const f1 = v => (Math.round(v * 10) / 10).toFixed(1);
+
+/* ---------- display units (2026-08-27) ----------
+   A DISPLAY/INPUT layer only — the files stay canonical (SVG user units,
+   pxPerMm mapping, pins carry mm), so agents and old drawings are untouched.
+   mm/cm for parts, m for architecture, in / ft-in for interior work.
+   data-vs-unit + data-vs-scale on the svg root make a drawing self-describing;
+   the pins sidecar mirrors them, but the svg attributes win on conflict. */
+const UNITS = {
+  mm:   { opt: "mm",    perMm: 1,        dec: 1, snapMm: 1,    snapLbl: "1 mm", gMinor: 5,    gMajor: 10 },
+  cm:   { opt: "cm",    perMm: 0.1,      dec: 1, snapMm: 10,   snapLbl: "1 cm", gMinor: 10,   gMajor: 50 },
+  m:    { opt: "m",     perMm: 0.001,    dec: 2, snapMm: 10,   snapLbl: "1 cm", gMinor: 100,  gMajor: 1000 },
+  in:   { opt: "in",    perMm: 1 / 25.4, dec: 2, snapMm: 6.35, snapLbl: "¼″", gMinor: 25.4, gMajor: 304.8 },
+  ftin: { opt: "ft-in", perMm: 1 / 25.4, dec: 1, snapMm: 25.4, snapLbl: "1″",      gMinor: 76.2, gMajor: 304.8 },
+};
+function ftinStr(mm) {
+  const t = Math.abs(mm) / 25.4, sign = mm < 0 ? "-" : "";
+  let ft = Math.floor(t / 12), inch = +(t - ft * 12).toFixed(1);
+  if (inch >= 12) { ft++; inch = 0; }
+  if (!ft) return `${sign}${inch}"`;
+  return inch ? `${sign}${ft}'${inch}"` : `${sign}${ft}'`;
+}
+const fmtNum = mm => S.unit === "ftin" ? ftinStr(mm)
+  : String(+(mm * UNITS[S.unit].perMm).toFixed(UNITS[S.unit].dec));
+const fmtLen = mm => S.unit === "ftin" ? ftinStr(mm) : fmtNum(mm) + " " + S.unit;
+// "350" (current unit) · "3.5m" "35cm" "12in" · 12'6 · 12'6" · 6" · 6 1/2" -> mm
+function parseLen(str) {
+  str = String(str).trim().toLowerCase().replace(/′/g, "'").replace(/[″”]/g, '"');
+  let m;
+  if ((m = str.match(/^(\d+(?:\.\d+)?)\s*'\s*(?:(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?\s*(?:"|in)?)?$/)))
+    return (+m[1] * 12 + (m[2] ? +m[2] : 0) + (m[3] ? m[3] / m[4] : 0)) * 25.4;
+  if ((m = str.match(/^(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?\s*(?:"|in|inch(?:es)?)$/)))
+    return (+m[1] + (m[2] ? m[2] / m[3] : 0)) * 25.4;
+  if ((m = str.match(/^(\d+(?:\.\d+)?)\s*(mm|cm|m|ft)$/)))
+    return +m[1] * { mm: 1, cm: 10, m: 1000, ft: 304.8 }[m[2]];
+  const v = parseFloat(str);
+  return isNaN(v) ? NaN : v / UNITS[S.unit].perMm;
+}
+function setUnit(u, save = true) {
+  if (!UNITS[u]) return;
+  S.unit = u;
+  $("unitSel").value = u;
+  $("snapLbl").textContent = UNITS[u].snapLbl;
+  if (S.svgEl && save) {
+    S.svgEl.setAttribute("data-vs-unit", u);
+    scheduleSvgSave(); scheduleSave();
+  }
+  renderPins();
+  if (S.svgEl) drawOverlay();
+}
+window.vsUnits = { UNITS, ftinStr, fmtNum, fmtLen, parseLen, setUnit };  // console/debug handle
 const inVb = u => u && u.x >= S.vb.x && u.y >= S.vb.y &&
                   u.x <= S.vb.x + S.vb.width && u.y <= S.vb.y + S.vb.height;
 
@@ -348,13 +409,13 @@ $("stageWrap").addEventListener("mousemove", e => {
   const u = toUser(e);
   if (!inVb(u)) { $("readout").textContent = "—"; rubberTo(null); return; }
   const mm = mmOf(u);
-  let txt = `x ${f1(mm.x)}  y ${f1(mm.y)} mm`;
+  let txt = `x ${fmtLen(mm.x)}  y ${fmtLen(mm.y)}`;
   if (S.drawing && S.drawing.pts.length) {
     const last = S.drawing.pts[S.drawing.pts.length - 1];
     const al = alignSnap(snapU(e.shiftKey ? orthoSnap(last, u) : u));
     const su = al.p;
     const len = Math.hypot(su.x - last[0], su.y - last[1]) / S.pxPerMm;
-    txt = `↔ ${f1(len)} mm · ` + txt;
+    txt = `↔ ${fmtLen(len)} · ` + txt;
     rubberTo(su, al);
   }
   $("readout").textContent = txt;
@@ -605,15 +666,17 @@ function openLenEditor(hit, e) {
   closeLenEditor();
   const wrap = $("stageWrap"), r = wrap.getBoundingClientRect();
   const inp = document.createElement("input");
-  inp.type = "number"; inp.step = "0.1"; inp.min = "0.1"; inp.id = "lenEdit";
-  inp.value = f1(Math.hypot(hit.b[0] - hit.a[0], hit.b[1] - hit.a[1]) / S.pxPerMm);
+  inp.type = "text"; inp.inputMode = "decimal"; inp.id = "lenEdit";
+  inp.title = S.unit === "ftin" ? `length — 12'6", 8', bare number = inches`
+            : `length in ${UNITS[S.unit].opt} — suffixes ok (350mm, 3.5m, 12'6")`;
+  inp.value = fmtNum(Math.hypot(hit.b[0] - hit.a[0], hit.b[1] - hit.a[1]) / S.pxPerMm);
   inp.style.left = (e.clientX - r.left + wrap.scrollLeft - 34) + "px";
   inp.style.top = (e.clientY - r.top + wrap.scrollTop - 15) + "px";
   wrap.appendChild(inp);
   inp.focus(); inp.select();
   inp.onkeydown = ev => {
     ev.stopPropagation();
-    if (ev.key === "Enter") { applyLen(hit, parseFloat(inp.value)); closeLenEditor(); }
+    if (ev.key === "Enter") { applyLen(hit, parseLen(inp.value)); closeLenEditor(); }
     else if (ev.key === "Escape") closeLenEditor();
   };
   inp.onblur = () => setTimeout(closeLenEditor, 100);
@@ -626,16 +689,17 @@ function openRadEditor(el, idx, e) {
   closeLenEditor();
   const wrap = $("stageWrap"), r = wrap.getBoundingClientRect();
   const inp = document.createElement("input");
-  inp.type = "number"; inp.step = "0.5"; inp.min = "0"; inp.id = "lenEdit";
-  inp.title = "corner radius in mm — 0 removes it";
-  inp.value = f1((getFillets(el).get(idx) || 0) / S.pxPerMm);
+  inp.type = "text"; inp.inputMode = "decimal"; inp.id = "lenEdit";
+  inp.title = S.unit === "ftin" ? `corner radius in inches — 0 removes it`
+            : `corner radius in ${UNITS[S.unit].opt} — 0 removes it; suffixes ok`;
+  inp.value = fmtNum((getFillets(el).get(idx) || 0) / S.pxPerMm);
   inp.style.left = (e.clientX - r.left + wrap.scrollLeft - 36) + "px";
   inp.style.top = (e.clientY - r.top + wrap.scrollTop - 34) + "px";
   wrap.appendChild(inp);
   inp.focus(); inp.select();
   inp.onkeydown = ev => {
     ev.stopPropagation();
-    if (ev.key === "Enter") { applyRadius(el, idx, parseFloat(inp.value) || 0); closeLenEditor(); }
+    if (ev.key === "Enter") { applyRadius(el, idx, parseLen(inp.value) || 0); closeLenEditor(); }
     else if (ev.key === "Escape") closeLenEditor();
   };
   inp.onblur = () => setTimeout(closeLenEditor, 100);
@@ -647,7 +711,7 @@ function applyRadius(el, idx, mm) {
   S.selection = [];                       // conversion may replace the element
   setFillets(el, fm);
   drawSketchLayer(); scheduleSvgSave();
-  toast(mm > 0 ? `corner radius ${f1(mm)} mm` : "radius removed");
+  toast(mm > 0 ? `corner radius ${fmtLen(mm)}` : "radius removed");
 }
 /* parametric-style length edit: the edited side keeps its direction and the
    change SLIDES the downstream geometry rigidly instead of rotating the
@@ -682,7 +746,7 @@ function applyLen(hit, mm) {
     if (absorb >= 0) {
       for (let k = j; ; k = (k + 1) % n) { move(k); if (k === absorb) break; }
       const p = pts[absorb], q = pts[(absorb + 1) % n];
-      note = ` · parallel side now ${f1(Math.hypot(q[0] - p[0], q[1] - p[1]) / S.pxPerMm)} mm`;
+      note = ` · parallel side now ${fmtLen(Math.hypot(q[0] - p[0], q[1] - p[1]) / S.pxPerMm)}`;
     } else {
       move(j);
       note = " · neighbor rotated (no parallel side)";
@@ -690,7 +754,7 @@ function applyLen(hit, mm) {
   }
   setPts(el, pts);
   drawSketchLayer(); scheduleSvgSave();
-  toast(`side set to ${f1(mm)} mm${note}`);
+  toast(`side set to ${fmtLen(mm)}${note}`);
 }
 
 /* ---------- box-select: drag empty canvas; only fully-enclosed shapes select ---------- */
@@ -887,7 +951,7 @@ function handleMove(e) {
   setPts(S.dragging.el, pts);
   S.dragging.moved = true;
   const mm = mmOf({ x: su.x, y: su.y });
-  $("readout").textContent = `x ${f1(mm.x)}  y ${f1(mm.y)} mm`;
+  $("readout").textContent = `x ${fmtLen(mm.x)}  y ${fmtLen(mm.y)}`;
   drawSketchLayer();
 }
 function handleUp() {
@@ -948,7 +1012,7 @@ function renderPins() {
     <div class="pin">
       <div class="badge">${p.n}</div>
       <div>
-        <div class="mm">${f1(p.mm.x)}, ${f1(p.mm.y)} mm</div>
+        <div class="mm">${fmtLen(p.mm.x)}, ${fmtLen(p.mm.y)}</div>
         <input data-n="${p.n}" value="${escAttr(p.note)}" placeholder="what changes here?">
       </div>
       <button class="del" data-n="${p.n}" title="delete pin">×</button>
@@ -986,7 +1050,8 @@ $("copyBtn").onclick = () => {
   });
   S.pins.forEach(p =>
     lines.push(`pin ${p.n} @ (${f1(p.mm.x)}, ${f1(p.mm.y)}) mm — ${p.note || "(no note)"}`));
-  const txt = `${FILE} — ${lines.length ? "" : "empty, "}${S.pxPerMm} px/mm, mm from top-left, y down:\n` +
+  const txt = `${FILE} — ${lines.length ? "" : "empty, "}${S.pxPerMm} px/mm, mm from top-left, y down` +
+              (S.unit !== "mm" ? ` (human sees ${UNITS[S.unit].opt} — answer in kind)` : "") + `:\n` +
               lines.join("\n");
   navigator.clipboard.writeText(txt).then(() => toast("copied"));
 };
@@ -998,7 +1063,11 @@ async function loadPins() {
   if (j && Array.isArray(j.pins)) {
     S.pins = j.pins;
     S.nextN = S.pins.reduce((m, p) => Math.max(m, p.n), 0) + 1;
-    if (j.pxPerMm) { S.pxPerMm = j.pxPerMm; $("scaleIn").value = j.pxPerMm; }
+    // sidecar is the fallback; an svg root data-vs-scale/-unit wins (loadSvg)
+    if (j.pxPerMm && !(S.svgEl && S.svgEl.hasAttribute("data-vs-scale")))
+      { S.pxPerMm = j.pxPerMm; $("scaleIn").value = j.pxPerMm; }
+    if (j.unit && !(S.svgEl && S.svgEl.hasAttribute("data-vs-unit")))
+      setUnit(j.unit, false);
   }
   renderPins();
 }
@@ -1010,6 +1079,7 @@ function scheduleSave() {
 async function savePins() {
   const data = {
     pxPerMm: S.pxPerMm,
+    unit: S.unit,   // the human's display unit — pin notes may be phrased in it
     convention: "mm measured in SVG user units / pxPerMm, origin = viewBox top-left, y down",
     pins: S.pins,
   };
@@ -1068,7 +1138,7 @@ function placeSegText(t, a, b, z) {
   const off = 13 / z;
   t.setAttribute("x", (a[0] + b[0]) / 2 + nx * off);
   t.setAttribute("y", (a[1] + b[1]) / 2 + ny * off);
-  t.textContent = f1(L / S.pxPerMm);
+  t.textContent = fmtNum(L / S.pxPerMm);
 }
 function segLabel(parent, a, b, z) {
   if (Math.hypot(b[0] - a[0], b[1] - a[1]) / S.pxPerMm < 0.05) return;
@@ -1199,17 +1269,19 @@ function rubberTo(su, al) {
 function gridG() {
   const g = document.createElementNS(NS, "g");
   const { x, y, width, height } = S.vb, s = S.pxPerMm;
-  const step5 = 5 * s;
-  const minor = step5 * S.zoom >= 6;
-  for (let gx = Math.ceil(x / step5) * step5; gx <= x + width; gx += step5) {
-    const is10 = Math.round(gx / step5) % 2 === 0;
-    if (!is10 && !minor) continue;
-    g.appendChild(line(gx, y, gx, y + height, is10 ? .3 : .12));
+  const u = UNITS[S.unit];                       // grid follows the unit
+  const step = u.gMinor * s;
+  const every = Math.max(1, Math.round(u.gMajor / u.gMinor));
+  const minor = step * S.zoom >= 6;
+  for (let gx = Math.ceil(x / step) * step; gx <= x + width; gx += step) {
+    const isMajor = Math.round(gx / step) % every === 0;
+    if (!isMajor && !minor) continue;
+    g.appendChild(line(gx, y, gx, y + height, isMajor ? .3 : .12));
   }
-  for (let gy = Math.ceil(y / step5) * step5; gy <= y + height; gy += step5) {
-    const is10 = Math.round(gy / step5) % 2 === 0;
-    if (!is10 && !minor) continue;
-    g.appendChild(line(x, gy, x + width, gy, is10 ? .3 : .12));
+  for (let gy = Math.ceil(y / step) * step; gy <= y + height; gy += step) {
+    const isMajor = Math.round(gy / step) % every === 0;
+    if (!isMajor && !minor) continue;
+    g.appendChild(line(x, gy, x + width, gy, isMajor ? .3 : .12));
   }
   return g;
 }
@@ -1252,10 +1324,12 @@ function pinsG() {
 
 /* ---------- controls ---------- */
 $("gridChk").onchange = drawOverlay;
+$("unitSel").onchange = () => setUnit($("unitSel").value);
 $("scaleIn").onchange = () => {
   const v = parseFloat($("scaleIn").value);
   if (!(v > 0)) return;
   S.pxPerMm = v;
+  if (S.svgEl) { S.svgEl.setAttribute("data-vs-scale", v); scheduleSvgSave(); }
   for (const p of S.pins) p.mm = { x: +f1(p.user.x / v), y: +f1(p.user.y / v) };
   renderPins(); drawOverlay(); scheduleSave();
 };
