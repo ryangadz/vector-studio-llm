@@ -4,6 +4,8 @@
 
 ![A rough floor plan in the viewer: white sketch lines with draggable corner dots on a mm grid, and two numbered pins with notes for the LLM](docs/ui-floor-plan.png)
 
+![The whole loop in 17 seconds: sketch a rough island, pin a note asking for exact dimensions and rounded corners, the agent edits the SVG on disk, the viewer reloads with real fillets](docs/loop.gif)
+
 A two-file, no-build, local sketching loop for making vector drawings **with**
 a coding agent (Claude Code, Cursor, aider, a local model — anything that can
 edit files). You draw rough shapes and point at things; the LLM does the math.
