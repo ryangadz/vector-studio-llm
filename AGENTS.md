@@ -24,6 +24,12 @@ When asked to "check pins" (or given a `*.svg.pins.json` path):
 - Each pin carries `user` (SVG units), `mm`, and a free-text `note`. The
   pin's coordinates are where the human pointed — treat them as ground
   truth for *where*; the note says *what*.
+- The drawing may carry `data-vs-unit` (the human's DISPLAY unit: mm, cm,
+  m, in, ftin) and `data-vs-scale` (px per mm) on the svg root; the
+  sidecar mirrors them as `unit`/`pxPerMm`. Files and pin `mm` values stay
+  canonical regardless — but the human's notes may be phrased in the
+  display unit ("make this wall 12'"), so convert before editing, and
+  keep those attributes intact when you rewrite the file.
 
 ## The data-vs model rules
 

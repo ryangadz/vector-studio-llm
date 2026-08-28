@@ -104,7 +104,15 @@ round-trip is one sentence, and the agent regenerates from your model.
   select; drag the selection to move it, **Del** deletes, **Esc** deselects.
 - **Ctrl+Z / Ctrl+Shift+Z** undo/redo. Live mm lengths appear only where
   they're changing (on the rubber line, and beside a dragged dot).
-- mm grid overlay, cursor readout in mm, zoom with fit/1:1/Ctrl+scroll.
+- Grid overlay, cursor readout, zoom with fit/1:1/Ctrl+scroll.
+- **Units** — a selector switches display and input between **mm, cm, m, in,
+  and ft-in**; readouts, typed lengths, snap, and grid all follow (snap
+  becomes 1 cm / ¼″ / 1″ as fits the unit). Typed lengths take suffixes
+  (`350mm`, `3.5m`, `12'6"`; in ft-in a bare number is inches). The choice
+  saves into the drawing itself (`data-vs-unit`, plus `data-vs-scale` for
+  px/mm), so a floor plan opens in feet while a part opens in mm —
+  `examples/studio-apartment.svg` is a 20'×14' studio to try it on. Under
+  the hood nothing changes: files stay SVG user units at px/mm.
 
 ## The agent contract
 
@@ -123,6 +131,11 @@ What your LLM needs to know (also summarized by the **Copy for LLM** button):
 - Mark any outline the human should keep point-editing with `data-vs="1"`.
   Freeform curves you author (tangent arcs, beziers) can be plain `<path>`s —
   they render fine but won't get drag dots.
+- A drawing may carry `data-vs-unit` (the human's display unit: mm, cm, m,
+  in, ftin) and `data-vs-scale` (px per mm) on the svg root; the sidecar
+  mirrors them as `unit`/`pxPerMm`. Pin `mm` values stay canonical — but pin
+  notes may be phrased in the display unit ("make this wall 12'"), so
+  convert.
 - One editor at a time per file: the viewer pauses auto-reload while a line
   is mid-draw and announces changed files with a "new updates" button; last
   writer wins.

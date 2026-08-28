@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3600 2600" data-vs-unit="ftin" data-vs-scale="0.5">
+  <!-- Vector Studio LLM example · 0.5 px = 1 mm · a 20' x 14' studio with a 6' x 3' island, display unit ft-in -->
+  <rect data-vs-bg="1" width="3600" height="2600" fill="#1A1916"/>
+  <polygon data-vs="1" fill="none" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="250,220 3298,220 3298,2353.6 250,2353.6"/>
+  <polygon data-vs="1" fill="none" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="700,1650 1614.4,1650 1614.4,2107.2 700,2107.2"/>
+</svg>
