@@ -2,9 +2,9 @@
 
 > Sketch it rough, pin what's wrong, let the LLM do the geometry — no pixels, no wasted tokens.
 
-![A rough floor plan in the viewer: white sketch lines with draggable corner dots on a mm grid, and two numbered pins with notes for the LLM](docs/ui-floor-plan.png)
+![A rough floor plan in pin mode: amber-framed canvas, big PIN and SKETCH mode buttons in the right rail, and a numbered pin open in its popover with a note for the LLM](docs/ui-floor-plan-v2.png)
 
-![The whole loop in 17 seconds: sketch a rough island, pin a note asking for exact dimensions and rounded corners, the agent edits the SVG on disk, the viewer reloads with real fillets](docs/loop.gif)
+![The whole loop in 22 seconds: amber pin mode and teal sketch mode announce themselves with frame tints and ghost previews, a rough island is sketched click by click, a pin note asks for exact dimensions and rounded corners, the agent edits the SVG on disk, the viewer reloads with real fillets](docs/loop-v2.gif)
 
 A two-file, no-build, local sketching loop for making vector drawings **with**
 a coding agent (Claude Code, Cursor, aider, a local model — anything that can
@@ -120,7 +120,7 @@ mode to edit or delete it right where it is.
   Fillets are parameters on the shape — arcs re-derive after every drag, and
   the dots never go away:
 
-  ![A plate with parametric corner radii: the drag dots sit at the sharp model corners while the arcs are derived](docs/ui-parametric-corners.png)
+  ![A plate with parametric corner radii in teal sketch mode, controls in the narrow-window top bar: the drag dots sit at the sharp model corners while the arcs are derived](docs/ui-parametric-corners-v2.png)
 - **Drag empty space** → box-select. Only shapes *fully* inside the box
   select; drag the selection to move it, **Del** deletes, **Esc** deselects.
 - **Ctrl+C / Ctrl+V** — a selection copies to the **system clipboard** as a
