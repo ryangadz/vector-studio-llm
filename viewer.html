@@ -16,70 +16,158 @@
   ::-webkit-scrollbar-thumb{background:var(--amber);border-radius:6px}
   ::-webkit-scrollbar-thumb:hover{background:#f0b458}
   ::-webkit-scrollbar-corner{background:#1e1d19}
+  html,body{height:100%}
   body{margin:0;background:var(--graphite);color:var(--bone);
-       font:14px/1.45 "Segoe UI",system-ui,sans-serif;height:100vh;
-       display:flex;flex-direction:column;overflow:hidden}
-  header{display:flex;align-items:center;gap:14px;padding:8px 14px;
-         background:var(--panel);border-bottom:1px solid #3a3933;flex:none}
-  header h1{font-size:14px;margin:0;font-weight:700;letter-spacing:.4px}
-  header h1 span{color:var(--amber)}
-  #fname{font-family:var(--mono);font-size:12px;color:var(--teal)}
-  #readout{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--bone);
-           background:var(--graphite);padding:3px 10px;border-radius:5px;min-width:190px;text-align:right}
-  #main{flex:1;display:flex;min-height:0}
-  #stageWrap{flex:1;overflow:auto;padding:24px;position:relative}
+       font:14px/1.45 "Segoe UI",system-ui,sans-serif;
+       display:flex;overflow:hidden}
+
+  /* ---------- canvas (left, all the room) ---------- */
+  #main{flex:1;position:relative;display:flex;min-width:0;min-height:0;padding:10px}
+  #stageWrap{flex:1;overflow:auto;padding:24px;position:relative;
+             background:#1e1d19;border-radius:10px;touch-action:manipulation}
   #stage{background:#1A1916;border:1px solid #3a3933;
          box-shadow:0 2px 14px rgba(0,0,0,.5);border-radius:3px;
-         display:inline-block;line-height:0;cursor:crosshair}
+         display:inline-block;line-height:0}
   #stage svg{display:block}
-  aside{width:300px;flex:none;background:var(--panel);border-left:1px solid #3a3933;
-        display:flex;flex-direction:column;min-height:0}
-  .ctl{padding:10px 12px;border-bottom:1px solid #3a3933;display:flex;flex-wrap:wrap;
-       gap:8px;align-items:center;font-size:13px}
-  .ctl label{display:flex;gap:6px;align-items:center;color:var(--bone);cursor:pointer}
-  .ctl input[type=number]{width:52px;background:var(--graphite);color:var(--bone);
+  /* mode frame tint — chrome only, zero layout shift, visible in the corner of the eye */
+  #frame{position:absolute;inset:10px;border-radius:10px;pointer-events:none;z-index:4;
+         transition:box-shadow .35s}
+  body[data-mode="pin"] #frame{
+    box-shadow:inset 0 0 0 3px #e6a23ccc, inset 0 0 34px #e6a23c30}
+  body[data-mode="sketch"] #frame{
+    box-shadow:inset 0 0 0 3px #5fb3a1cc, inset 0 0 34px #5fb3a130}
+  /* distinct cursors — pin glyph (hotspot at the tip) vs crosshair */
+  body[data-mode="pin"] #stageWrap{cursor:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="26" height="30"><path d="M13 2c-4.4 0-8 3.6-8 8 0 6 8 18 8 18s8-12 8-18c0-4.4-3.6-8-8-8z" fill="%23E6A23C" stroke="%231A1916" stroke-width="1.5"/><circle cx="13" cy="10" r="3.2" fill="%231A1916"/></svg>') 13 29, crosshair}
+  body[data-mode="sketch"] #stageWrap{cursor:crosshair}
+  /* ghost preview follows the cursor — pure chrome, never in the saved file */
+  #ghost{position:absolute;pointer-events:none;display:none;z-index:5}
+  #ghost.live{display:block}
+  #gPin,#gDot{display:none}
+  body[data-mode="pin"]    #ghost.live #gPin{display:block}
+  body[data-mode="sketch"] #ghost.live #gDot{display:block}
+  #gPin{transform:translate(-14px,-33px)}
+  #gDot{transform:translate(-9px,-9px)}
+  #readout{position:absolute;left:22px;bottom:18px;z-index:5;pointer-events:none;
+           font-family:var(--mono);font-size:12.5px;color:var(--bone);
+           background:#1a1916cc;padding:3px 10px;border-radius:5px}
+  #drawHint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:5;
+            pointer-events:none;display:none;font:12px var(--mono);color:var(--dim);
+            background:#1a1916cc;padding:4px 12px;border-radius:14px;white-space:nowrap}
+  #drawHint.show{display:block}
+  #drawHint b{color:var(--bone);font-weight:600}
+
+  /* ---------- control rail (right) / top bar (tall+narrow) ---------- */
+  aside{width:220px;flex:0 0 220px;display:flex;flex-direction:column;gap:14px;
+        background:var(--panel);border-left:1px solid #1c1b17;padding:14px 12px;
+        overflow:auto;min-height:0}
+  .leftcol{display:contents}
+  .brand{order:0;color:var(--dim);font-size:12px;letter-spacing:.06em;line-height:1.5;min-width:0}
+  .brand b{color:var(--bone);font-size:13px}
+  .brand b i{color:var(--amber);font-style:normal}
+  #fname{font-family:var(--mono);color:var(--teal)}
+  #status{font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+  #status.live{color:var(--teal)} #status.err{color:#d16a5a} #status.hold{color:var(--amber)}
+  .modes{order:1;display:flex;flex-direction:column;gap:12px}
+  button.bigmode{
+    display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;
+    padding:14px 10px 11px;border-radius:16px;
+    background:#3A3833;color:var(--dim);border:2px solid #4a4840;
+    font:700 20px var(--mono);letter-spacing:.05em;cursor:pointer;
+    transition:transform .15s cubic-bezier(.34,1.56,.64,1),box-shadow .2s,
+               background .2s,color .2s,border-color .2s}
+  button.bigmode .glyph{font-size:26px;line-height:1.1;
+    filter:grayscale(.9) opacity(.65);transition:filter .2s}
+  button.bigmode .sub{font:400 11px var(--mono);letter-spacing:.03em;opacity:.75}
+  button.bigmode:hover{transform:translateY(-2px);color:var(--bone)}
+  button.bigmode:active{transform:scale(.97)}
+  body[data-mode="pin"]    #modePin,
+  body[data-mode="sketch"] #modeSketch{color:var(--graphite);font-weight:800}
+  body[data-mode="pin"] #modePin{
+    background:linear-gradient(160deg,#F2B75C,var(--amber));
+    border-color:#f7c877;animation:pulseA 2.6s ease-in-out infinite}
+  body[data-mode="sketch"] #modeSketch{
+    background:linear-gradient(160deg,#7CC9B7,var(--teal));
+    border-color:#8fd8c7;animation:pulseT 2.6s ease-in-out infinite}
+  body[data-mode="pin"] #modePin .glyph,
+  body[data-mode="sketch"] #modeSketch .glyph{filter:none}
+  @keyframes pulseA{0%,100%{box-shadow:0 0 14px #e6a23c55,0 0 3px #e6a23c88}
+                    50%{box-shadow:0 0 30px #e6a23c99,0 0 6px #e6a23ccc}}
+  @keyframes pulseT{0%,100%{box-shadow:0 0 14px #5fb3a155,0 0 3px #5fb3a188}
+                    50%{box-shadow:0 0 30px #5fb3a199,0 0 6px #5fb3a1cc}}
+  .pop{animation:pop .28s cubic-bezier(.34,1.56,.64,1)!important}
+  @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.06)}100%{transform:scale(1)}}
+  .smallctl{order:2;display:flex;flex-direction:column;gap:8px;font-size:12.5px}
+  .smallctl .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .smallctl label{display:flex;gap:5px;align-items:center;color:var(--bone);cursor:pointer}
+  .smallctl input[type=number]{width:52px;background:var(--graphite);color:var(--bone);
        border:1px solid #46443d;border-radius:4px;padding:3px 6px;font-family:var(--mono)}
-  .ctl select{background:var(--graphite);color:var(--bone);border:1px solid #46443d;
+  .smallctl select{background:var(--graphite);color:var(--bone);border:1px solid #46443d;
        border-radius:4px;padding:3px 4px;font:12.5px var(--mono);cursor:pointer}
   button{background:var(--graphite);color:var(--bone);border:1px solid #46443d;
-         border-radius:5px;padding:4px 10px;font-size:12.5px;cursor:pointer}
+         border-radius:5px;padding:4px 10px;font-size:12.5px;cursor:pointer;white-space:nowrap}
   button:hover{border-color:var(--amber);color:var(--amber)}
   button.warn:hover{border-color:#d16a5a;color:#d16a5a}
-  button.mode{flex:1}
-  button.mode.on{background:var(--amber);color:var(--graphite);border-color:var(--amber);font-weight:700}
   #updBtn{display:none;background:var(--amber);color:var(--graphite);
           border-color:var(--amber);font-weight:700}
   #updBtn.show{display:inline-block}
   #updBtn:hover{color:var(--graphite);border-color:#f0b458;background:#f0b458}
   #lenEdit{position:absolute;width:72px;background:var(--panel);color:var(--bone);
            border:1.5px solid var(--amber);border-radius:5px;padding:3px 6px;
-           font:600 13px var(--mono);z-index:5;box-shadow:0 2px 8px rgba(0,0,0,.6)}
-  #zoomPct{font-family:var(--mono);color:var(--dim);min-width:44px;text-align:center}
+           font:600 13px var(--mono);z-index:6;box-shadow:0 2px 8px rgba(0,0,0,.6)}
+  #pinPop{position:absolute;width:210px;background:var(--panel);color:var(--bone);
+          border:1.5px solid var(--amber);border-radius:8px;padding:8px 10px;
+          z-index:6;box-shadow:0 3px 12px rgba(0,0,0,.6)}
+  #pinPop .head{display:flex;gap:7px;align-items:center;margin-bottom:5px}
+  #pinPop .badge{width:20px;height:20px;border-radius:50%;background:var(--amber);
+       color:var(--graphite);font-weight:700;font-size:11px;display:flex;flex:none;
+       align-items:center;justify-content:center}
+  #pinPop .mm{font-family:var(--mono);font-size:11px;color:var(--teal);flex:1;
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #pinPop .del{background:none;border:none;color:var(--dim);font-size:15px;padding:0 2px}
+  #pinPop .del:hover{color:#d16a5a}
+  #pinPop input{width:100%;background:transparent;border:none;
+       border-bottom:1px dashed #46443d;color:var(--bone);font-size:13px;
+       padding:2px 0;outline:none}
+  #pinPop input:focus{border-bottom-color:var(--amber)}
+  #zoomPct{font-family:var(--mono);color:var(--dim);min-width:40px;text-align:center}
   #sketchCtl{display:none}
   #sketchCtl.show{display:flex}
-  #hint{font-size:11.5px;color:var(--dim);line-height:1.6;width:100%}
-  #hint b{color:var(--bone);font-weight:600}
-  #pinHead{padding:8px 12px 4px;font-size:12px;color:var(--dim);
-           text-transform:uppercase;letter-spacing:.8px}
-  #pinList{flex:1;overflow-y:auto;padding:0 10px 10px;min-height:0}
-  .pin{display:grid;grid-template-columns:26px 1fr 20px;gap:6px;align-items:start;
-       padding:7px 6px;border-radius:6px;margin-bottom:2px}
-  .pin:hover{background:#35342e}
-  .pin .badge{width:22px;height:22px;border-radius:50%;background:var(--amber);
-       color:var(--graphite);font-weight:700;font-size:12px;display:flex;
-       align-items:center;justify-content:center;margin-top:1px}
-  .pin .mm{font-family:var(--mono);font-size:11.5px;color:var(--teal)}
-  .pin input{width:100%;background:transparent;border:none;border-bottom:1px dashed #46443d;
-       color:var(--bone);font-size:13px;padding:2px 0;outline:none}
-  .pin input:focus{border-bottom-color:var(--amber)}
-  .pin .del{background:none;border:none;color:var(--dim);font-size:15px;padding:0;line-height:1.4}
-  .pin .del:hover{color:#d16a5a}
-  #empty{color:var(--dim);font-size:13px;padding:10px 6px}
-  footer{padding:9px 12px;border-top:1px solid #3a3933;display:flex;gap:8px;align-items:center;flex:none}
-  #status{margin-left:auto;font-size:11.5px;color:var(--dim);font-family:var(--mono);text-align:right}
-  #status.live{color:var(--teal)} #status.err{color:#d16a5a} #status.hold{color:var(--amber)}
+  .railspacer{order:3;flex:1}
+  .hint{order:4;font-size:11.5px;color:var(--dim);line-height:1.6}
+  .hint b{color:var(--bone);font-weight:600}
+  .vs-endtarget{opacity:.35;cursor:pointer}
+  .vs-endtarget:hover{opacity:.9}
+
+  /* auto-switch: tall/narrow window (e.g. half-snapped beside a chat window)
+     -> controls move to a top bar; wide window -> right rail. No manual toggle. */
+  @media (max-aspect-ratio: 13/10){
+    body{flex-direction:column}
+    aside{order:-1;width:100%;flex:0 0 auto;flex-direction:row;
+          align-items:center;gap:16px;padding:8px 14px;overflow:visible;
+          border-left:none;border-bottom:1px solid #1c1b17}
+    /* left block = 2 lines total: title line, small controls wrapping under it */
+    .leftcol{display:flex;flex-direction:column;gap:7px;flex:1;min-width:0}
+    .brand{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .brand br{display:none}
+    .brand b::after{content:" · "}
+    .smallctl{flex-direction:row;flex-wrap:wrap;align-items:center}
+    .smallctl .row{display:contents}
+    #sketchCtl{display:none}
+    #sketchCtl.show{display:contents}
+    .modes{flex-direction:row;flex:0 0 auto}
+    button.bigmode{width:144px;padding:8px 10px 6px;font-size:17px}
+    button.bigmode .glyph{font-size:21px}
+    .railspacer,.hint{display:none}
+  }
+  /* narrow half-snap (small laptops): compact the big buttons */
+  @media (max-aspect-ratio: 13/10) and (max-width: 760px){
+    aside{gap:10px}
+    button.bigmode{width:106px;font-size:15px;border-radius:12px}
+    button.bigmode .glyph{font-size:19px}
+    button.bigmode .sub{display:none}
+  }
   /* file picker */
-  #picker{padding:40px;max-width:640px}
+  #picker{flex:1;overflow:auto;padding:40px;max-width:640px}
   #picker h2{font-weight:700;font-size:16px;margin-top:28px}
   #picker a{display:block;color:var(--teal);font-family:var(--mono);font-size:13.5px;
             text-decoration:none;padding:5px 8px;border-radius:5px}
@@ -97,58 +185,76 @@
          transition:opacity .25s;pointer-events:none}
 </style>
 </head>
-<body>
-<header>
-  <h1>vector-<span>studio</span></h1>
-  <button id="homeBtn" title="picker: new sketch / open a drawing"
-          onclick="location.href='viewer.html'">＋ new / open</button>
-  <button id="updBtn" title="the file changed on disk while reload was paused">⟳ new updates</button>
-  <span id="fname"></span>
-  <span id="readout">—</span>
-</header>
+<body data-mode="pin">
 <div id="main">
   <div id="stageWrap"><div id="stage"></div></div>
-  <aside>
-    <div class="ctl">
-      <button id="modePin" class="mode on">📍 pin</button>
-      <button id="modeSketch" class="mode">✏️ sketch</button>
-    </div>
-    <div class="ctl">
-      <label><input type="checkbox" id="gridChk" checked> grid</label>
-      <label>unit <select id="unitSel">
-        <option value="mm" selected>mm</option><option value="cm">cm</option>
-        <option value="m">m</option><option value="in">in</option>
-        <option value="ftin">ft-in</option>
-      </select></label>
-      <label>px/mm <input type="number" id="scaleIn" value="2" min="0.1" step="0.5"></label>
-    </div>
-    <div class="ctl">
-      <button id="zOut">−</button><span id="zoomPct">100%</span><button id="zIn">+</button>
-      <button id="zFit">fit</button><button id="z100">1:1</button>
-    </div>
-    <div class="ctl" id="sketchCtl">
-      <label><input type="checkbox" id="snapChk" checked> snap <span id="snapLbl">1 mm</span></label>
-      <button id="undoBtn" title="Ctrl+Z">undo</button>
-      <button id="redoBtn" title="Ctrl+Shift+Z">redo</button>
-      <div id="hint"><b>click</b> add point · <b>click 1st point</b> close shape ·
-        <b>Enter</b> finish line · <b>Esc</b> cancel · <b>Backspace</b> drop last point ·
-        <b>drag dot</b> move · <b>Alt+click dot</b> delete ·
-        <b>Shift</b> straight lines · <b>click a line</b> add point on it ·
-        <b>double-click a line</b> type its length (suffixes ok: 350mm, 3.5m, 12'6") ·
-        <b>double-click a dot</b> corner radius (0 removes) ·
-        <b>drag empty space</b> box-select a whole shape ·
-        <b>drag selection</b> move it · <b>Del</b> delete it</div>
-    </div>
-    <div id="pinHead">pins — click the drawing</div>
-    <div id="pinList"><div id="empty">No pins yet. Click a spot on the drawing,
-      type what should change there, and tell your LLM to check pins.</div></div>
-    <footer>
-      <button id="copyBtn">Copy for LLM</button>
-      <button id="clearBtn" class="warn">Clear all</button>
-      <span id="status">…</span>
-    </footer>
-  </aside>
+  <div id="frame"></div>
+  <div id="ghost">
+    <svg id="gPin" width="28" height="36" opacity=".5" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14 33C8 24 5 19 5 14a9 9 0 1 1 18 0c0 5-3 10-9 19z" fill="#E6A23C" stroke="#1A1916" stroke-width="1.4"/>
+      <text id="gPinN" x="14" y="18" text-anchor="middle" font-size="11" font-weight="bold" font-family="monospace" fill="#1A1916">1</text>
+    </svg>
+    <svg id="gDot" width="18" height="18" opacity=".55" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="9" cy="9" r="4.5" fill="#F4F0E7"/>
+      <path d="M9 0v4M9 14v4M0 9h4M14 9h4" stroke="#F4F0E7" stroke-width="1.2"/>
+    </svg>
+  </div>
+  <span id="readout">—</span>
+  <div id="drawHint"><b>click start</b> = close · <b>click last point</b> = finish open ·
+    <b>Enter</b> = finish open</div>
 </div>
+<aside>
+  <div class="leftcol">
+    <div class="brand"><b>vector-<i>studio</i></b><br>
+      <span id="fname"></span> <span id="status">…</span></div>
+    <div class="smallctl">
+      <div class="row">
+        <label><input type="checkbox" id="gridChk" checked> grid</label>
+        <label>unit <select id="unitSel">
+          <option value="mm" selected>mm</option><option value="cm">cm</option>
+          <option value="m">m</option><option value="in">in</option>
+          <option value="ftin">ft-in</option>
+        </select></label>
+        <label>px/mm <input type="number" id="scaleIn" value="2" min="0.1" step="0.5"></label>
+      </div>
+      <div class="row">
+        <button id="zOut">−</button><span id="zoomPct">100%</span><button id="zIn">+</button>
+        <button id="zFit">fit</button><button id="z100">1:1</button>
+      </div>
+      <div class="row" id="sketchCtl">
+        <label><input type="checkbox" id="snapChk" checked> snap <span id="snapLbl">1 mm</span></label>
+        <button id="undoBtn" title="Ctrl+Z">undo</button>
+        <button id="redoBtn" title="Ctrl+Shift+Z">redo</button>
+      </div>
+      <div class="row">
+        <button id="copyBtn">⧉ copy for LLM</button>
+        <button id="clearBtn" class="warn" title="delete every pin">clear pins</button>
+      </div>
+      <div class="row">
+        <button id="homeBtn" title="picker: new sketch / open a drawing"
+                onclick="location.href='viewer.html'">＋ new / open</button>
+        <button id="updBtn" title="the file changed on disk while reload was paused">⟳ new updates</button>
+      </div>
+    </div>
+  </div>
+  <div class="modes">
+    <button id="modePin" class="bigmode mode on" title="P">
+      <span class="glyph">📍</span>PIN<span class="sub">point at it</span>
+    </button>
+    <button id="modeSketch" class="bigmode mode" title="S">
+      <span class="glyph">✏️</span>SKETCH<span class="sub">draw it</span>
+    </button>
+  </div>
+  <div class="railspacer"></div>
+  <div class="hint" id="hint"><b>P / S</b> switch modes ·
+    <b>pin mode:</b> click the drawing, type what should change; click a pin to read/edit it ·
+    <b>sketch:</b> click points · <b>click start</b> close · <b>click last point / Enter</b> finish open ·
+    <b>Esc</b> cancel · <b>Backspace</b> drop last ·
+    <b>Shift</b> 0/45/90° · <b>drag dot</b> move · <b>Alt+click dot</b> delete ·
+    <b>click a line</b> add point · <b>2×click line</b> type length ·
+    <b>2×click dot</b> corner radius · <b>drag empty</b> box-select ·
+    <b>Del</b> delete · <b>Ctrl+C/V</b> copy/paste selection · <b>Ctrl+Z</b> undo</div>
+</aside>
 <div id="toast"></div>
 
 <script>
@@ -163,12 +269,12 @@ const S = {
   origDims: null, pins: [], nextN: 1, saveTimer: null, dirty: false,
   mode: "pin", drawing: null, dragging: null, dragEndAt: 0,
   undoStack: [], redoStack: [], svgSaveTimer: null, svgDirty: false, saving: false,
-  selection: [], selecting: null,
+  selection: [], selecting: null, pasting: null,
 };
 let boxStart = null;   // pending box-select / move-selection drag
 let statusHold = 0;   // declared up top — a late declaration once dead-zoned setStatus
 let toastT = null;
-let pendingInserts = [];  // click-on-line inserts wait 300ms so a dblclick can cancel them
+let pendingInserts = [];  // click-on-line inserts wait 420ms so a double-tap can cancel them
 
 /* ---------- no file -> picker + new-sketch form ---------- */
 if (!FILE) {
@@ -245,6 +351,7 @@ async function loadSvg(first) {
   if (sc > 0) { S.pxPerMm = sc; $("scaleIn").value = sc; }
   setUnit(svg.getAttribute("data-vs-unit") || S.unit, false);
   S.undoStack = []; S.redoStack = []; S.drawing = null; S.selection = []; S.selecting = null;
+  S.pasting = null; $("drawHint").classList.remove("show"); closePinPop();
   sketchEls().forEach(el => { if (el.tagName === "path") regenD(el); });  // self-heal derived d
   if (first) fitZoom(); else applyZoom();
   const m = await fetch("/api/mtime?file=" + encodeURIComponent(FILE)).then(r => r.json()).catch(() => null);
@@ -304,12 +411,19 @@ $("stageWrap").addEventListener("wheel", e => {
 /* ---------- modes ---------- */
 function setMode(m) {
   if (S.mode === "sketch" && m !== "sketch" && S.drawing) cancelPath();
+  if (m !== "sketch" && S.pasting) cancelPaste();
+  const switched = S.mode !== m;
   S.mode = m;
+  document.body.dataset.mode = m;      // drives frame tint, cursor, ghost, buttons
   $("modePin").classList.toggle("on", m === "pin");
   $("modeSketch").classList.toggle("on", m === "sketch");
   $("sketchCtl").classList.toggle("show", m === "sketch");
-  $("pinHead").textContent = m === "pin" ? "pins — click the drawing"
-                                         : "pins (read-only in sketch mode)";
+  closePinPop();
+  hideGhost();
+  if (switched) {                      // quick scale pop on the button that just lit
+    const b = $(m === "pin" ? "modePin" : "modeSketch");
+    b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop");
+  }
   drawOverlay();
 }
 $("modePin").onclick = () => setMode("pin");
@@ -404,12 +518,34 @@ window.vsUnits = { UNITS, ftinStr, fmtNum, fmtLen, parseLen, setUnit };  // cons
 const inVb = u => u && u.x >= S.vb.x && u.y >= S.vb.y &&
                   u.x <= S.vb.x + S.vb.width && u.y <= S.vb.y + S.vb.height;
 
+/* ghost preview: what a click will do, at the cursor. Pin mode = the next
+   numbered pin (tip at the cursor); sketch mode = a small vertex dot at the
+   SNAPPED position, so the ghost also shows the snap step. Mid-path the
+   rubber line already signals, so no extra ghost. HTML overlay only —
+   nothing here can ever reach the saved SVG. */
+function hideGhost() { $("ghost").classList.remove("live"); }
+function moveGhost(e, u) {
+  if (S.dragging || S.pasting || (boxStart && boxStart.moved) ||
+      (S.drawing && S.drawing.pts.length)) { hideGhost(); return; }
+  const r = $("main").getBoundingClientRect();
+  let x = e.clientX - r.left, y = e.clientY - r.top;
+  if (S.mode === "sketch") {           // dot rides the snap grid
+    const su = snapU(u);
+    const p = new DOMPoint(su.x, su.y).matrixTransform(S.svgEl.getScreenCTM());
+    x = p.x - r.left; y = p.y - r.top;
+  } else $("gPinN").textContent = S.nextN;
+  const g = $("ghost");
+  g.style.left = x + "px"; g.style.top = y + "px";
+  g.classList.add("live");
+}
 $("stageWrap").addEventListener("mousemove", e => {
   if (!S.svgEl) return;
   const u = toUser(e);
-  if (!inVb(u)) { $("readout").textContent = "—"; rubberTo(null); return; }
+  if (!inVb(u)) { $("readout").textContent = "—"; rubberTo(null); hideGhost(); return; }
   const mm = mmOf(u);
   let txt = `x ${fmtLen(mm.x)}  y ${fmtLen(mm.y)}`;
+  if (S.pasting) movePasteGhost(e, u);
+  else moveGhost(e, u);
   if (S.drawing && S.drawing.pts.length) {
     const last = S.drawing.pts[S.drawing.pts.length - 1];
     const al = alignSnap(snapU(e.shiftKey ? orthoSnap(last, u) : u));
@@ -420,6 +556,7 @@ $("stageWrap").addEventListener("mousemove", e => {
   }
   $("readout").textContent = txt;
 });
+$("stageWrap").addEventListener("mouseleave", hideGhost);
 
 /* ---------- sketch geometry helpers ----------
    The MODEL is always a vertex list. A shape with no corner radii lives as a
@@ -569,6 +706,7 @@ function startPath(pt) {
   insertSketchEl(el);
   S.drawing = { el, pts: [pt] };
   setPts(el, S.drawing.pts);
+  $("drawHint").classList.add("show");
   drawOverlay();
   maybeExpand(pt);
 }
@@ -616,6 +754,7 @@ function finishPath(close) {
     S.drawing.el.replaceWith(poly);
   }
   S.drawing = null;
+  $("drawHint").classList.remove("show");
   rubberTo(null); drawOverlay(); scheduleSvgSave();
   toast(close ? "shape closed" : "line finished");
 }
@@ -624,6 +763,7 @@ function cancelPath() {
   S.drawing.el.remove();
   S.drawing = null;
   S.undoStack.pop();   // drop the snapshot startPath pushed
+  $("drawHint").classList.remove("show");
   rubberTo(null); drawOverlay();
 }
 
@@ -833,22 +973,42 @@ $("stageWrap").addEventListener("pointerdown", e => {
   window.addEventListener("pointermove", boxMove);
   window.addEventListener("pointerup", boxUp);
 });
+/* our own double-tap detection replaces native dblclick everywhere it gates
+   an action: native dblclick is timing-sensitive on touchpad double-taps and
+   often never fires on touchscreens (which made finishing an open line
+   mouse-only). Two clicks within 400 ms and ~12 px count. */
+let lastStageTap = null;   // {t, x, y}
+function isDoubleTap(e) {
+  const d = lastStageTap && Date.now() - lastStageTap.t < 400 &&
+            Math.hypot(e.clientX - lastStageTap.x, e.clientY - lastStageTap.y) < 12;
+  lastStageTap = d ? null : { t: Date.now(), x: e.clientX, y: e.clientY };
+  return !!d;
+}
 $("stageWrap").addEventListener("click", e => {
   if (!S.svgEl || !downAt) return;
   if (Date.now() - S.dragEndAt < 200) return;                       // just finished a handle drag
   if (Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return; // was a drag/scroll
   const u = toUser(e);
   if (!inVb(u)) return;
+  const dbl = isDoubleTap(e);
+
+  if (S.pasting) { placePaste(pasteTarget(e, u)); return; }
 
   if (S.mode === "sketch") {
     if (!S.drawing) {
       if (S.selection.length) { clearSelection(); return; }  // click-away deselects
       const hit = segmentAt(u);
-      if (hit) {           // clicking a line adds a point there (dblclick cancels -> length editor)
+      if (hit) {
+        if (dbl) {                       // double-tap a line -> type its exact length
+          pendingInserts.forEach(clearTimeout); pendingInserts = [];
+          openLenEditor(hit, e);
+          return;
+        }
+        // single click adds a point there — delayed past the double-tap window
         const timer = setTimeout(() => {
           insertVertex(hit);
           pendingInserts = pendingInserts.filter(t => t !== timer);
-        }, 300);
+        }, 420);
         pendingInserts.push(timer);
         return;
       }
@@ -856,51 +1016,41 @@ $("stageWrap").addEventListener("click", e => {
       startPath([su.x, su.y]);
       return;
     }
-    const last = S.drawing.pts[S.drawing.pts.length - 1];
-    const su = alignSnap(snapU(e.shiftKey ? orthoSnap(last, u) : u)).p;
-    const first = S.drawing.pts[0];
+    const pts = S.drawing.pts;
     const ctm = S.svgEl.getScreenCTM();
-    const fs = new DOMPoint(first[0], first[1]).matrixTransform(ctm);
-    if (S.drawing.pts.length >= 3 && Math.hypot(e.clientX - fs.x, e.clientY - fs.y) < 10)
-      return finishPath(true);                                      // clicked back on the start
+    const fs = new DOMPoint(pts[0][0], pts[0][1]).matrixTransform(ctm);
+    if (pts.length >= 3 && Math.hypot(e.clientX - fs.x, e.clientY - fs.y) < 10)
+      return finishPath(true);                       // clicked back on the start
+    const last = pts[pts.length - 1];
+    const ls = new DOMPoint(last[0], last[1]).matrixTransform(ctm);
+    if (pts.length >= 2 && Math.hypot(e.clientX - ls.x, e.clientY - ls.y) < 10)
+      return finishPath(false);   // clicked the last placed point -> finish open
+    const su = alignSnap(snapU(e.shiftKey ? orthoSnap(last, u) : u)).p;
     addVertex([su.x, su.y]);
     return;
   }
 
   // pin mode
   const mm = mmOf(u);
-  S.pins.push({ n: S.nextN++, user: { x: +u.x.toFixed(1), y: +u.y.toFixed(1) },
-                mm: { x: +f1(mm.x), y: +f1(mm.y) }, note: "" });
-  renderPins(); drawOverlay(); scheduleSave();
-  const inp = $("pinList").querySelector(`input[data-n="${S.nextN - 1}"]`);
-  if (inp) { inp.focus(); inp.scrollIntoView({ block: "nearest" }); }
-});
-$("stageWrap").addEventListener("dblclick", e => {
-  if (S.mode !== "sketch") return;
-  if (S.drawing) {
-    // the dblclick's two clicks added a duplicate vertex — drop it, then finish
-    const p = S.drawing.pts;
-    if (p.length >= 2) {
-      const [a, b] = [p[p.length - 2], p[p.length - 1]];
-      if (Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.01) p.pop();
-    }
-    finishPath(false);
-    return;
-  }
-  // dblclick on a line: cancel the pending single-click inserts, type its exact length
-  pendingInserts.forEach(clearTimeout); pendingInserts = [];
-  const u = toUser(e);
-  const hit = u && segmentAt(u);
-  if (hit) openLenEditor(hit, e);
+  const pin = { n: S.nextN++, user: { x: +u.x.toFixed(1), y: +u.y.toFixed(1) },
+                mm: { x: +f1(mm.x), y: +f1(mm.y) }, note: "" };
+  S.pins.push(pin);
+  drawOverlay(); scheduleSave();
+  openPinPop(pin, e.clientX, e.clientY);
 });
 
 /* ---------- keyboard ---------- */
 window.addEventListener("keydown", e => {
-  if (e.target.tagName === "INPUT") return;
-  if (S.mode !== "sketch") return;
+  const tag = e.target.tagName;
+  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
   const mod = e.ctrlKey || e.metaKey;
+  if (!mod && !e.altKey && e.key.toLowerCase() === "p") { setMode("pin"); return; }
+  if (!mod && !e.altKey && e.key.toLowerCase() === "s") { setMode("sketch"); return; }
+  if (S.mode !== "sketch") return;
   if (e.key === "Enter") { finishPath(false); e.preventDefault(); }
-  else if (e.key === "Escape") { if (S.drawing) cancelPath(); else clearSelection(); }
+  else if (e.key === "Escape") {
+    if (S.pasting) cancelPaste(); else if (S.drawing) cancelPath(); else clearSelection();
+  }
   else if (e.key === "Backspace") { dropLastVertex(); e.preventDefault(); }
   else if (e.key === "Delete" && S.selection.length) {
     pushUndo();
@@ -954,17 +1104,28 @@ function handleMove(e) {
   $("readout").textContent = `x ${fmtLen(mm.x)}  y ${fmtLen(mm.y)}`;
   drawSketchLayer();
 }
-function handleUp() {
+let lastDotTap = null;   // {t, x, y, el, idx} — double-tap a dot = radius editor
+function handleUp(e) {
   window.removeEventListener("pointermove", handleMove);
   window.removeEventListener("pointerup", handleUp);
-  if (S.dragging && !S.dragging.moved) S.undoStack.pop();  // click, not a drag
-  if (S.dragging && S.dragging.moved) {
-    scheduleSvgSave();
-    const pts = getPts(S.dragging.el);
-    if (pts[S.dragging.idx]) maybeExpand(pts[S.dragging.idx]);
-  }
+  const d = S.dragging;
   S.dragging = null;
   S.dragEndAt = Date.now();
+  if (!d) return;
+  if (d.moved) {
+    scheduleSvgSave();
+    const pts = getPts(d.el);
+    if (pts[d.idx]) maybeExpand(pts[d.idx]);
+    lastDotTap = null;
+    return;
+  }
+  S.undoStack.pop();  // click, not a drag
+  if (lastDotTap && lastDotTap.el === d.el && lastDotTap.idx === d.idx &&
+      Date.now() - lastDotTap.t < 400 &&
+      Math.hypot(e.clientX - lastDotTap.x, e.clientY - lastDotTap.y) < 12) {
+    lastDotTap = null;
+    openRadEditor(d.el, d.idx, e);
+  } else lastDotTap = { t: Date.now(), x: e.clientX, y: e.clientY, el: d.el, idx: d.idx };
 }
 
 /* ---------- saving the SVG (sketch edits) ---------- */
@@ -1001,38 +1162,45 @@ async function saveSvg() {
   finally { S.saving = false; }
 }
 
-/* ---------- pins (unchanged from v0) ---------- */
-function renderPins() {
-  const list = $("pinList");
-  if (!S.pins.length) {
-    list.innerHTML = '<div id="empty">No pins yet. Click a spot on the drawing, type what should change there, and tell your LLM to check pins.</div>';
-    return;
-  }
-  list.innerHTML = S.pins.map(p => `
-    <div class="pin">
-      <div class="badge">${p.n}</div>
-      <div>
-        <div class="mm">${fmtLen(p.mm.x)}, ${fmtLen(p.mm.y)}</div>
-        <input data-n="${p.n}" value="${escAttr(p.note)}" placeholder="what changes here?">
-      </div>
-      <button class="del" data-n="${p.n}" title="delete pin">×</button>
-    </div>`).join("");
-  list.querySelectorAll("input").forEach(inp => {
-    inp.oninput = () => { pinByN(+inp.dataset.n).note = inp.value; scheduleSave(); };
-    inp.onkeydown = e => { if (e.key === "Enter") inp.blur(); };
-  });
-  list.querySelectorAll(".del").forEach(b => {
-    b.onclick = () => { S.pins = S.pins.filter(p => p.n !== +b.dataset.n);
-                        renderPins(); drawOverlay(); scheduleSave(); };
-  });
+/* ---------- pins: canvas-only ----------
+   No pin list panel. Hover a pin to read its note (native tooltip); click it
+   in pin mode to read/edit/delete in a small popover next to the pin. */
+function renderPins() { if (S.svgEl) drawOverlay(); }
+function closePinPop() { $("pinPop")?.remove(); }
+function openPinPop(pin, clientX, clientY) {
+  closePinPop(); closeLenEditor();
+  const wrap = $("stageWrap"), r = wrap.getBoundingClientRect();
+  const pop = document.createElement("div");
+  pop.id = "pinPop";
+  const head = document.createElement("div"); head.className = "head";
+  const badge = document.createElement("div"); badge.className = "badge";
+  badge.textContent = pin.n;
+  const mm = document.createElement("span"); mm.className = "mm";
+  mm.textContent = `${fmtLen(pin.mm.x)}, ${fmtLen(pin.mm.y)}`;
+  const del = document.createElement("button"); del.className = "del";
+  del.title = "delete pin"; del.textContent = "×";
+  del.onclick = () => { S.pins = S.pins.filter(p => p !== pin);
+                        closePinPop(); drawOverlay(); scheduleSave(); };
+  head.append(badge, mm, del);
+  const inp = document.createElement("input");
+  inp.placeholder = "what changes here?";
+  inp.value = pin.note;
+  inp.oninput = () => { pin.note = inp.value; scheduleSave(); };
+  inp.onkeydown = ev => {
+    ev.stopPropagation();
+    if (ev.key === "Enter" || ev.key === "Escape") closePinPop();
+  };
+  pop.append(head, inp);
+  pop.style.left = Math.max(4, clientX - r.left + wrap.scrollLeft - 20) + "px";
+  pop.style.top = (clientY - r.top + wrap.scrollTop + 14) + "px";
+  wrap.appendChild(pop);
+  inp.focus();
 }
-const pinByN = n => S.pins.find(p => p.n === n);
-const escAttr = s => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
 $("clearBtn").onclick = () => {
   if (!S.pins.length) return;
   S.pins = []; S.nextN = 1;
-  renderPins(); drawOverlay(); scheduleSave();
+  closePinPop(); drawOverlay(); scheduleSave();
 };
 $("copyBtn").onclick = () => {
   const lines = [];
@@ -1055,6 +1223,131 @@ $("copyBtn").onclick = () => {
               lines.join("\n");
   navigator.clipboard.writeText(txt).then(() => toast("copied"));
 };
+
+/* ---------- copy / paste: selections travel as SVG fragment text ----------
+   Ctrl+C with a selection writes a standalone SVG fragment to the system
+   clipboard: data-vs marks, model attributes, canonical user-unit coords,
+   plus data-vs-unit / data-vs-scale context on the root so the fragment is
+   self-describing. It pastes into another studio file (converting through
+   the unit/scale context), into Inkscape, a text editor, or an LLM chat.
+   Ctrl+V parses data-vs shapes back; the group rides the cursor as a ghost
+   (anchor: bbox center; snap and Shift 0/45/90 apply), click places it,
+   Esc cancels. A paste while in pin mode switches to sketch mode. */
+function fragBounds(els) {
+  let x1 = 1e9, y1 = 1e9, x2 = -1e9, y2 = -1e9;
+  for (const el of els) for (const p of getPts(el)) {
+    x1 = Math.min(x1, p[0]); y1 = Math.min(y1, p[1]);
+    x2 = Math.max(x2, p[0]); y2 = Math.max(y2, p[1]);
+  }
+  return { x1, y1, x2, y2 };
+}
+function buildCopyFragment(els) {
+  const b = fragBounds(els), m = 5 * S.pxPerMm;   // 5 mm margin
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `${+(b.x1 - m).toFixed(1)} ${+(b.y1 - m).toFixed(1)} ` +
+    `${+(b.x2 - b.x1 + 2 * m).toFixed(1)} ${+(b.y2 - b.y1 + 2 * m).toFixed(1)}`);
+  svg.setAttribute("data-vs-unit", S.unit);
+  svg.setAttribute("data-vs-scale", S.pxPerMm);
+  for (const el of els) svg.appendChild(el.cloneNode(true));
+  return new XMLSerializer().serializeToString(svg);
+}
+document.addEventListener("copy", e => {
+  const t = document.activeElement;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+  if (S.mode !== "sketch" || !S.selection.length) return;
+  e.clipboardData.setData("text/plain", buildCopyFragment(S.selection));
+  e.preventDefault();
+  toast(`copied ${S.selection.length} shape${S.selection.length > 1 ? "s" : ""} as SVG — paste anywhere`);
+});
+document.addEventListener("paste", e => {
+  const t = document.activeElement;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+  if (!S.svgEl || S.drawing) return;
+  const txt = e.clipboardData.getData("text/plain");
+  if (!txt || !txt.includes("<svg") || !txt.includes("data-vs")) return;  // not ours — ignore
+  e.preventDefault();
+  beginPaste(txt);
+});
+function beginPaste(txt) {
+  const root = new DOMParser().parseFromString(txt, "image/svg+xml").documentElement;
+  if (root.nodeName !== "svg") return;
+  const shapes = [...root.querySelectorAll("polygon[data-vs],polyline[data-vs],path[data-vs]")];
+  if (!shapes.length) return;
+  if (S.mode !== "sketch") setMode("sketch");
+  cancelPaste();
+  // convert through the fragment's px/mm so physical size survives cross-file
+  const fs = parseFloat(root.getAttribute("data-vs-scale"));
+  const k = fs > 0 ? S.pxPerMm / fs : 1;
+  const els = shapes.map(sh => {
+    const el = document.importNode(sh, true);
+    el.removeAttribute("id");
+    if (k !== 1) {
+      const fm = getFillets(el);
+      if (fm.size) el.setAttribute("data-vs-fillets",
+        [...fm].map(([i, r]) => `${i}:${+(r * k).toFixed(1)}`).join(","));
+      setPts(el, getPts(el).map(p => [+(p[0] * k).toFixed(1), +(p[1] * k).toFixed(1)]));
+    } else if (el.tagName === "path") regenD(el);   // self-heal a stale d
+    return el;
+  });
+  const b = fragBounds(els);
+  S.pasting = { els, cx: (b.x1 + b.x2) / 2, cy: (b.y1 + b.y2) / 2, at: null, anchor: null };
+  hideGhost();
+  buildPasteGhost();
+  toast("click to place — Esc cancels");
+}
+function buildPasteGhost() {
+  if (!S.pasting) return;
+  const ov = S.svgEl.querySelector("#vs-overlay");
+  if (!ov) return;
+  ov.querySelector("#vs-paste")?.remove();
+  const g = document.createElementNS(NS, "g");
+  g.setAttribute("id", "vs-paste");
+  g.setAttribute("opacity", ".5");
+  g.setAttribute("pointer-events", "none");
+  for (const el of S.pasting.els) {
+    const c = el.cloneNode(true);
+    c.removeAttribute("data-vs");        // the ghost must never count as geometry
+    g.appendChild(c);
+  }
+  g.setAttribute("visibility", S.pasting.at ? "visible" : "hidden");
+  if (S.pasting.at) g.setAttribute("transform",
+    `translate(${S.pasting.at.x - S.pasting.cx},${S.pasting.at.y - S.pasting.cy})`);
+  ov.appendChild(g);
+}
+function pasteTarget(e, u) {
+  if (e.shiftKey && S.pasting.anchor)
+    return snapU(orthoSnap([S.pasting.anchor.x, S.pasting.anchor.y], u));
+  return snapU(u);
+}
+function movePasteGhost(e, u) {
+  if (!S.pasting.anchor) S.pasting.anchor = snapU(u);
+  const t = pasteTarget(e, u);
+  S.pasting.at = t;
+  const g = S.svgEl.querySelector("#vs-paste") || (buildPasteGhost(),
+            S.svgEl.querySelector("#vs-paste"));
+  if (!g) return;
+  g.setAttribute("visibility", "visible");
+  g.setAttribute("transform", `translate(${t.x - S.pasting.cx},${t.y - S.pasting.cy})`);
+}
+function placePaste(t) {
+  const { els, cx, cy } = S.pasting;
+  pushUndo();                            // one undo step for the whole paste
+  const dx = t.x - cx, dy = t.y - cy;
+  for (const el of els) {
+    setPts(el, getPts(el).map(p => [+(p[0] + dx).toFixed(1), +(p[1] + dy).toFixed(1)]));
+    insertSketchEl(el);
+  }
+  cancelPaste();
+  S.selection = els;
+  const b = fragBounds(els);
+  maybeExpand([b.x1, b.y1]); maybeExpand([b.x2, b.y2]);
+  drawSketchLayer(); scheduleSvgSave();
+  toast(`pasted ${els.length} shape${els.length > 1 ? "s" : ""} — drag moves, Del deletes`);
+}
+function cancelPaste() {
+  S.svgEl?.querySelector("#vs-paste")?.remove();
+  S.pasting = null;
+}
 
 async function loadPins() {
   let j;
@@ -1116,6 +1409,7 @@ function drawOverlay() {
   g.append(grid, pins, sk);
   S.svgEl.appendChild(g);
   drawSketchLayer();
+  if (S.pasting) buildPasteGhost();   // the rebuild dropped the paste ghost
 }
 function segTextEl(z) {
   const t = document.createElementNS(NS, "text");
@@ -1195,19 +1489,34 @@ function drawSketchLayer() {
   }
   for (const el of sketchEls()) {
     const pts = getPts(el);
+    const isDrawingEl = el === S.drawing?.el;
     pts.forEach(([x, y], idx) => {
       const h = document.createElementNS(NS, "circle");
       h.setAttribute("cx", x); h.setAttribute("cy", y); h.setAttribute("r", 4.5 / z);
-      h.setAttribute("fill", el === S.drawing?.el && idx === 0 ? "#5FB3A1" : "#E6A23C");
+      h.setAttribute("fill", isDrawingEl && idx === 0 ? "#5FB3A1" : "#E6A23C");
       h.setAttribute("stroke", "#23221E"); h.setAttribute("stroke-width", 1.2 / z);
       h.setAttribute("pointer-events", "all");
       h.style.cursor = "move";
-      if (!S.drawing) {
-        h.addEventListener("pointerdown", e => handleDown(e, el, idx));
-        h.addEventListener("dblclick", e => { e.stopPropagation(); openRadEditor(el, idx, e); });
-      }
+      h.style.touchAction = "none";
+      if (!S.drawing) h.addEventListener("pointerdown", e => handleDown(e, el, idx));
       sk.appendChild(h);
     });
+    // while drawing: hover rings on the two finishing points — the start
+    // (click = close the shape) and the last placed (click = finish open)
+    if (isDrawingEl) {
+      const targets = [];
+      if (pts.length >= 3) targets.push(pts[0]);
+      if (pts.length >= 2) targets.push(pts[pts.length - 1]);
+      for (const [x, y] of targets) {
+        const ring = document.createElementNS(NS, "circle");
+        ring.setAttribute("class", "vs-endtarget");
+        ring.setAttribute("cx", x); ring.setAttribute("cy", y); ring.setAttribute("r", 9 / z);
+        ring.setAttribute("fill", "none");
+        ring.setAttribute("stroke", "#5FB3A1"); ring.setAttribute("stroke-width", 2 / z);
+        ring.setAttribute("pointer-events", "all");
+        sk.appendChild(ring);
+      }
+    }
   }
   // rubber band line while drawing
   const rb = document.createElementNS(NS, "line");
@@ -1317,7 +1626,19 @@ function pinsG() {
     t.setAttribute("font-size", 11 / z); t.setAttribute("font-weight", "700");
     t.setAttribute("fill", "#23221E"); t.setAttribute("font-family", "Segoe UI, sans-serif");
     t.textContent = p.n;
-    g.append(lead, dot, bub, t);
+    const tip = document.createElementNS(NS, "title");
+    tip.textContent = `pin ${p.n}: ${p.note || "(no note)"}`;
+    const grp = document.createElementNS(NS, "g");
+    grp.append(tip, lead, dot, bub, t);
+    for (const el of [bub, t]) {        // hover = read the note (tooltip)
+      el.setAttribute("pointer-events", "all");
+      el.style.cursor = S.mode === "pin" ? "pointer" : "";
+      if (S.mode === "pin")             // click = edit it, right where it is
+        el.addEventListener("click", e => {
+          e.stopPropagation(); openPinPop(p, e.clientX, e.clientY);
+        });
+    }
+    g.appendChild(grp);
   }
   return g;
 }
@@ -1347,7 +1668,8 @@ function toast(msg) {
 }
 
 init();
-window.vs = { S, setMode, cancelPath, undo, redo, clearSelection, drawOverlay };  // console/debug access
+window.vs = { S, setMode, cancelPath, undo, redo, clearSelection, drawOverlay,
+              buildCopyFragment, beginPaste, cancelPaste };  // console/debug access
 } // end if (FILE)
 </script>
 </body>

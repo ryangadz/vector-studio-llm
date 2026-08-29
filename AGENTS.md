@@ -30,6 +30,10 @@ When asked to "check pins" (or given a `*.svg.pins.json` path):
   canonical regardless — but the human's notes may be phrased in the
   display unit ("make this wall 12'"), so convert before editing, and
   keep those attributes intact when you rewrite the file.
+- The human can copy a selection out of the viewer as a standalone SVG
+  fragment whose root carries the same `data-vs-unit` / `data-vs-scale`
+  context. If one is pasted at you, it is self-describing — read the
+  context, don't assume the target drawing's scale.
 
 ## The data-vs model rules
 
