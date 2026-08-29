@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vector Studio LLM — sketch it rough, let the LLM do the geometry</title>
+<meta name="description" content="A two-file, no-build, local sketching loop for making vector drawings with a coding agent. You draw rough shapes and point at things; the LLM does the math.">
+<style>
+  :root{
+    --bg:#1a1916; --panel:#242320; --ink:#e8e4da; --dim:#a09a8c;
+    --amber:#e6a23c; --teal:#7ecfc0; --mono:ui-monospace,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);
+       font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;
+       padding:0 20px 80px}
+  main{max-width:880px;margin:0 auto}
+  header{padding:56px 0 8px;text-align:center}
+  h1{font-size:34px;letter-spacing:.01em}
+  h1 b{color:var(--amber)} h1 span{color:var(--teal);font-weight:800}
+  .tagline{color:var(--dim);font-size:19px;margin:10px auto 0;max-width:640px}
+  .cta{margin:26px 0 40px;text-align:center}
+  .cta a{display:inline-block;margin:6px 8px;padding:11px 22px;border-radius:12px;
+         text-decoration:none;font-weight:700;font-size:16px}
+  .cta .repo{background:linear-gradient(160deg,var(--amber),#c9821f);color:#1a1916}
+  .cta .zip{border:1.5px solid var(--teal);color:var(--teal)}
+  .cta a:hover{filter:brightness(1.1)}
+  .shot{width:100%;border-radius:12px;border:1px solid #3a382f;display:block}
+  figure{margin:0 0 40px}
+  figcaption{color:var(--dim);font-size:14px;margin-top:8px;text-align:center}
+  h2{font-size:22px;margin:44px 0 14px;color:var(--amber)}
+  h2.t{color:var(--teal)}
+  ol.why{padding-left:22px}
+  ol.why li{margin-bottom:14px}
+  ol.why b{color:var(--ink)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:700px){.two{grid-template-columns:1fr}}
+  pre{background:var(--panel);border:1px solid #3a382f;border-radius:12px;
+      padding:16px 18px;overflow-x:auto;font:14px/1.7 var(--mono);color:var(--ink)}
+  pre .c{color:var(--dim)}
+  p{margin:0 0 14px} p.dim{color:var(--dim)}
+  a{color:var(--teal)}
+  footer{margin-top:56px;text-align:center;color:var(--dim);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><b>vector</b>-studio <span>LLM</span></h1>
+    <p class="tagline">Sketch it rough, pin what's wrong, let the LLM do the geometry
+    — no pixels, no wasted tokens.</p>
+  </header>
+
+  <div class="cta">
+    <a class="repo" href="https://github.com/ryangadz/vector-studio-llm">View on GitHub</a>
+    <a class="zip" href="https://github.com/ryangadz/vector-studio-llm/archive/refs/heads/main.zip">Download ZIP</a>
+  </div>
+
+  <figure>
+    <img class="shot" src="loop-v2.gif" width="840" height="525"
+         alt="The whole loop in 22 seconds: amber pin mode and teal sketch mode announce themselves with frame tints and ghost previews, a rough island is sketched click by click, a pin note asks for exact dimensions and rounded corners, the agent edits the SVG on disk, the viewer reloads with real fillets">
+    <figcaption>The whole loop in ~22 seconds: sketch → pin → the agent edits the file → the viewer reloads.</figcaption>
+  </figure>
+
+  <h2>Why it's deliberately weak as a vector app</h2>
+  <ol class="why">
+    <li><b>Draw, don't describe.</b> Rough geometry is faster to sketch than to put
+      into words — click out a floor plan in seconds instead of writing "a room
+      about 3 by 2 meters with a notch in the corner…".</li>
+    <li><b>Pins instead of 50 tools.</b> Click a spot, type what should change there.
+      The pin replaces the tool palette; the LLM is the tools.</li>
+    <li><b>The loop is text all the way down.</b> The drawing is an SVG file; pins are
+      a small JSON sidecar with exact mm coordinates. Your agent reads and edits a few
+      KB of text — no screenshot round-trips.</li>
+  </ol>
+
+  <h2 class="t">Two modes, obvious at a glance</h2>
+  <p class="dim">Amber frame = pin mode, teal frame = sketch mode — with a ghost
+  preview of what your next click will do. The controls move between a right rail
+  and a top bar to fit your window.</p>
+  <div class="two">
+    <figure>
+      <img class="shot" src="ui-floor-plan-v2.png"
+           alt="A rough floor plan in pin mode: amber-framed canvas, big PIN and SKETCH mode buttons in the right rail, and a numbered pin open in its popover with a note for the LLM">
+      <figcaption>Pin mode: point at it, type what should change.</figcaption>
+    </figure>
+    <figure>
+      <img class="shot" src="ui-parametric-corners-v2.png"
+           alt="A plate with parametric corner radii in teal sketch mode, controls in the narrow-window top bar: the drag dots sit at the sharp model corners while the arcs are derived">
+      <figcaption>Sketch mode: parametric fillets — the dots stay at the model corners.</figcaption>
+    </figure>
+  </div>
+
+  <h2>Quickstart</h2>
+  <p>Two files, no build, no dependencies beyond Python's standard library.
+  The tool never talks to an LLM itself — <b>the filesystem is the interface</b>,
+  so any file-editing agent (Claude Code, Cursor, aider, a local model…)
+  already works with it. That's also why there is no hosted demo:
+  the whole point is your agent editing files on <em>your</em> disk.</p>
+  <pre>git clone https://github.com/ryangadz/vector-studio-llm.git
+cd vector-studio-llm
+python serve.py          <span class="c"># then open http://127.0.0.1:8103/viewer.html</span></pre>
+  <p class="dim">Sketch something, drop a pin, then tell your agent to "check pins".
+  Full docs, the agent contract, and examples are in the
+  <a href="https://github.com/ryangadz/vector-studio-llm#readme">README</a>.</p>
+
+  <footer>MIT licensed ·
+    <a href="https://github.com/ryangadz/vector-studio-llm">ryangadz/vector-studio-llm</a>
+  </footer>
+</main>
+</body>
+</html>
