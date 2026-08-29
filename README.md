@@ -83,14 +83,35 @@ The viewer is a single `viewer.html`; no build step.
 Iteration is where it pays off: a change that would cost another CAD
 round-trip is one sentence, and the agent regenerates from your model.
 
+## You always know the mode
+
+Pin mode and sketch mode each paint the canvas with their own color — amber
+for 📍 pin, teal for ✏️ sketch: a tinted frame around the drawing area, a
+mode-shaped cursor (a pin with its tip at the point; a crosshair for
+sketching), and a **ghost preview** at the cursor showing exactly what a
+click will do — the next pin number, or a vertex dot sitting at its snapped
+position. The big mode buttons match the tint, and **P** / **S** switch
+modes from the keyboard.
+
+Controls live in a right rail on wide windows and move to a top bar when
+the window is tall and narrow (say, half-snapped beside a chat window) —
+automatically, by window shape.
+
+Pins live on the canvas itself: hover one to read its note, click it in pin
+mode to edit or delete it right where it is.
+
 ## Sketching
 
-- **Click** places points; click the first point to close a shape, **Enter**
-  finishes an open line, **Esc** cancels, **Backspace** drops the last point.
-  **Shift** locks segments to 0/45/90°. The cursor auto-aligns with earlier
-  points (dashed guides), so rectangles close square.
+- **Click** places points; click the first point to close a shape, click
+  the **last placed point** (or press **Enter**) to finish an open line —
+  both points grow hover rings while you draw, and a hint chip by the
+  canvas edge spells it out. **Esc** cancels, **Backspace** drops the last
+  point. **Shift** locks segments to 0/45/90°. The cursor auto-aligns with
+  earlier points (dashed guides), so rectangles close square.
 - **Drag a dot** to move it (snaps to whole mm; toggleable). **Alt+click a
-  dot** deletes it. **Click a line** to add a point on it.
+  dot** deletes it. **Click a line** to add a point on it. Double-clicks
+  are detected by the viewer itself (two taps within ~400 ms), so they work
+  the same on touchpads and touchscreens.
 - **Double-click a line** → type its exact length in mm. Parametric-style
   resize: the edited side keeps its direction and downstream geometry slides
   rigidly; on closed shapes the first parallel side absorbs the change, so
@@ -102,6 +123,15 @@ round-trip is one sentence, and the agent regenerates from your model.
   ![A plate with parametric corner radii: the drag dots sit at the sharp model corners while the arcs are derived](docs/ui-parametric-corners.png)
 - **Drag empty space** → box-select. Only shapes *fully* inside the box
   select; drag the selection to move it, **Del** deletes, **Esc** deselects.
+- **Ctrl+C / Ctrl+V** — a selection copies to the **system clipboard** as a
+  standalone SVG fragment: the `data-vs` model attributes, canonical
+  user-unit coordinates, and the drawing's unit/scale context on the root.
+  It pastes into another studio file (converted through that context, so
+  100 mm stays 100 mm across different px/mm), into Inkscape, a text
+  editor, or an LLM chat. On paste the shapes ride the cursor as a ghost —
+  snap and Shift apply — click drops them (one undo step, and they land
+  selected), **Esc** cancels. Pasting while in pin mode switches to sketch
+  mode. Clipboard content without `data-vs` shapes is ignored.
 - **Ctrl+Z / Ctrl+Shift+Z** undo/redo. Live mm lengths appear only where
   they're changing (on the rubber line, and beside a dragged dot).
 - Grid overlay, cursor readout, zoom with fit/1:1/Ctrl+scroll.
@@ -189,6 +219,14 @@ Any chat LLM closes the loop too — the paste-back is just manual:
 That's one honest manual paste per round instead of an agent doing it for
 you. Never used git? The **Download ZIP** route in
 [Quickstart](#quickstart) is all the setup there is.
+
+## Checks
+
+`python tests/checks.py` drives the viewer end to end against a scratch
+copy of the examples — units, mode signals, layout breakpoints, path
+finishing, copy/paste. Needs `pip install playwright` and
+`python -m playwright install chromium`; the repo itself still has zero
+runtime dependencies.
 
 ## What this is not
 
