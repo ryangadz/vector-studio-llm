@@ -1,0 +1,7 @@
+{
+  "pxPerMm": 2,
+  "convention": "mm measured in SVG user units / pxPerMm, origin = viewBox top-left, y down",
+  "pins": [],
+  "file": "drawings/speaker-grille.svg",
+  "updated": "2026-08-29T00:57:19-0700"
+}
