@@ -812,6 +812,7 @@ function openLenEditor(hit, e) {
   inp.value = fmtNum(Math.hypot(hit.b[0] - hit.a[0], hit.b[1] - hit.a[1]) / S.pxPerMm);
   inp.style.left = (e.clientX - r.left + wrap.scrollLeft - 34) + "px";
   inp.style.top = (e.clientY - r.top + wrap.scrollTop - 15) + "px";
+  containPop(inp);
   wrap.appendChild(inp);
   inp.focus(); inp.select();
   inp.onkeydown = ev => {
@@ -835,6 +836,7 @@ function openRadEditor(el, idx, e) {
   inp.value = fmtNum((getFillets(el).get(idx) || 0) / S.pxPerMm);
   inp.style.left = (e.clientX - r.left + wrap.scrollLeft - 36) + "px";
   inp.style.top = (e.clientY - r.top + wrap.scrollTop - 34) + "px";
+  containPop(inp);
   wrap.appendChild(inp);
   inp.focus(); inp.select();
   inp.onkeydown = ev => {
@@ -1166,6 +1168,15 @@ async function saveSvg() {
    No pin list panel. Hover a pin to read its note (native tooltip); click it
    in pin mode to read/edit/delete in a small popover next to the pin. */
 function renderPins() { if (S.svgEl) drawOverlay(); }
+/* popovers swallow pointer events — a click inside one must never fall
+   through to the canvas underneath (it was dropping a NEW pin on the way
+   to the × button, and could add a vertex under the length editor).
+   pointerup stays unstopped: drags end on window listeners. */
+function containPop(el) {
+  for (const ev of ["pointerdown", "click", "dblclick", "mousemove"])
+    el.addEventListener(ev, e => e.stopPropagation());
+  el.addEventListener("pointerenter", hideGhost);
+}
 function closePinPop() { $("pinPop")?.remove(); }
 function openPinPop(pin, clientX, clientY) {
   closePinPop(); closeLenEditor();
@@ -1193,6 +1204,7 @@ function openPinPop(pin, clientX, clientY) {
   pop.append(head, inp);
   pop.style.left = Math.max(4, clientX - r.left + wrap.scrollLeft - 20) + "px";
   pop.style.top = (clientY - r.top + wrap.scrollTop + 14) + "px";
+  containPop(pop);
   wrap.appendChild(pop);
   inp.focus();
 }
