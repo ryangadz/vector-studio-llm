@@ -184,7 +184,18 @@ try:
         check("clicking a pin reopens its note",
               pg.eval_on_selector("#pinPop input", "e => e.value") == "test note")
         check("pin bubble click did not add a pin", pg.evaluate("vs.S.pins.length") == 1)
-        pg.keyboard.press("Escape")
+        # regression: clicks INSIDE the popover must never fall through to the
+        # canvas (the x button was dropping a brand-new pin underneath itself)
+        pg.click("#pinPop input")
+        pg.wait_for_timeout(250)
+        check("clicking into the note input adds no pin",
+              pg.evaluate("vs.S.pins.length") == 1 and
+              pg.eval_on_selector("#pinPop input", "e => e.value") == "test note")
+        pg.click("#pinPop .del")
+        pg.wait_for_timeout(250)
+        check("the x deletes the pin without dropping a new one",
+              pg.evaluate("vs.S.pins.length") == 0)
+        check("popover closes after delete", pg.evaluate("!document.getElementById('pinPop')"))
 
         # ghost: sketch mode dot rides the snap grid; mid-path no ghost
         pg.keyboard.press("s")
