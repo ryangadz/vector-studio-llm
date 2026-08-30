@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-250 -50 1250 1250">
+  <!-- vector-studio sketch · 2 px = 1 mm · 625 x 625 mm · dark ground, white lines -->
+  <rect data-vs-bg="1" x="-250" y="-50" width="1250" height="1250" fill="#1A1916"/>
+  <!-- snowflake: Ryan's sixth (edited 2026-08-27) arrayed 6x around the pinned origin -->
+  <polygon data-vs="1" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" points="262,126 290,42 336,120 394,20 374,132 536,22 550,94 400,212 428,366 558,186 689,257 775,239 731,318 847,318 740,357 916,442 860,490 683,419 564,521 785,543 789,692 847,758 757,759 815,859 728,786 742,981 672,957 645,768 498,716 589,918 462,996 434,1080 388,1002 330,1102 350,990 188,1100 174,1028 324,910 296,756 166,936 35,865 -51,883 -7,804 -123,804 -16,765 -192,680 -136,632 41,703 160,601 -61,579 -65,430 -123,364 -33,363 -91,263 -4,336 -18,141 52,165 79,354 226,406 135,204"/>
+  <!-- interior detail, one per sixth -->
+  <polygon data-vs="1" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" points="286,204 218,230 278,386 318,376 344,478 378,376"/>
+  <polygon data-vs="1" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" points="633,317 577,271 472,401 500,430 425,504 530,482"/>
+  <polygon data-vs="1" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" points="709,674 721,602 556,576 544,615 443,587 514,667"/>
+  <polygon data-vs="1" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" points="438,918 506,892 446,736 406,746 380,644 346,746"/>
+  <polygon data-vs="1" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" points="91,805 147,851 252,721 224,692 299,618 194,640"/>
+  <polygon data-vs="1" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" points="15,448 3,520 168,546 180,507 281,535 210,455"/>
+  <!-- origin marker: center (362,561) = 181,280.5 mm -->
+  <line x1="342" y1="561" x2="382" y2="561" stroke="#E6A23C" stroke-width="1.5"/>
+  <line x1="362" y1="541" x2="362" y2="581" stroke="#E6A23C" stroke-width="1.5"/>
+</svg>

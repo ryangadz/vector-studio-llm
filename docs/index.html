@@ -1,112 +1,235 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vector Studio LLM — sketch it rough, let the LLM do the geometry</title>
-<meta name="description" content="A two-file, no-build, local sketching loop for making vector drawings with a coding agent. You draw rough shapes and point at things; the LLM does the math.">
+<title>Vector Studio LLM — what it makes</title>
+<meta name="description" content="Draw rough. Pin what should change. Any file-editing agent does the geometry. A portfolio of real projects made with the sketch-and-pins loop.">
 <style>
   :root{
-    --bg:#1a1916; --panel:#242320; --ink:#e8e4da; --dim:#a09a8c;
-    --amber:#e6a23c; --teal:#7ecfc0; --mono:ui-monospace,Consolas,monospace;
+    --graphite:#23221E; --panel:#2C2B26; --panel2:#3A3833; --bone:#F4F0E7;
+    --amber:#E6A23C; --teal:#5FB3A1; --dim:#8B887E; --canvas:#1A1916;
+    --mono:'Cascadia Code',ui-monospace,Consolas,monospace;
   }
   *{box-sizing:border-box;margin:0}
-  body{background:var(--bg);color:var(--ink);
-       font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;
-       padding:0 20px 80px}
-  main{max-width:880px;margin:0 auto}
-  header{padding:56px 0 8px;text-align:center}
-  h1{font-size:34px;letter-spacing:.01em}
-  h1 b{color:var(--amber)} h1 span{color:var(--teal);font-weight:800}
-  .tagline{color:var(--dim);font-size:19px;margin:10px auto 0;max-width:640px}
-  .cta{margin:26px 0 40px;text-align:center}
-  .cta a{display:inline-block;margin:6px 8px;padding:11px 22px;border-radius:12px;
-         text-decoration:none;font-weight:700;font-size:16px}
-  .cta .repo{background:linear-gradient(160deg,var(--amber),#c9821f);color:#1a1916}
-  .cta .zip{border:1.5px solid var(--teal);color:var(--teal)}
-  .cta a:hover{filter:brightness(1.1)}
-  .shot{width:100%;border-radius:12px;border:1px solid #3a382f;display:block}
-  figure{margin:0 0 40px}
-  figcaption{color:var(--dim);font-size:14px;margin-top:8px;text-align:center}
-  h2{font-size:22px;margin:44px 0 14px;color:var(--amber)}
-  h2.t{color:var(--teal)}
-  ol.why{padding-left:22px}
-  ol.why li{margin-bottom:14px}
-  ol.why b{color:var(--ink)}
-  .two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-  @media(max-width:700px){.two{grid-template-columns:1fr}}
-  pre{background:var(--panel);border:1px solid #3a382f;border-radius:12px;
-      padding:16px 18px;overflow-x:auto;font:14px/1.7 var(--mono);color:var(--ink)}
-  pre .c{color:var(--dim)}
-  p{margin:0 0 14px} p.dim{color:var(--dim)}
-  a{color:var(--teal)}
-  footer{margin-top:56px;text-align:center;color:var(--dim);font-size:14px}
+  body{background:var(--graphite);color:var(--bone);font:18px/1.7 var(--mono)}
+  a{color:var(--teal);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  header{max-width:1160px;margin:0 auto;padding:56px 24px 8px}
+  header h1{font-size:40px;font-weight:600;letter-spacing:.01em}
+  header h1 .st{color:var(--amber)}
+  .tag{margin-top:12px;font-size:22px;color:var(--bone)}
+  .tag em{color:var(--amber);font-style:normal}
+  .repoline{margin-top:14px;font-size:16px;color:var(--dim)}
+
+  main{max-width:1160px;margin:0 auto;padding:24px 24px 80px}
+  section.project{margin-top:64px;border-top:1px solid var(--panel2);padding-top:40px}
+  section.project:first-child{margin-top:24px;border-top:0;padding-top:0}
+
+  .phead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .phead h2{font-size:27px;font-weight:600}
+  .meta{font-size:15px;color:var(--dim)}
+
+  .composite{margin-top:18px;background:var(--canvas);border:1px solid var(--panel2);
+    border-radius:10px;overflow:hidden;display:block}
+  .composite img{width:100%;display:block}
+  .composite.svgwrap{padding:24px;background:var(--canvas);text-align:center}
+  .composite.svgwrap img{max-width:520px;margin:0 auto}
+
+  /* process steps as a bordered grid — same frame system as the other composites */
+  .stepgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;padding:14px}
+  .stepgrid figure{margin:0;display:flex;flex-direction:column}
+  .stepgrid a{display:block;border:1px solid var(--panel2);border-radius:8px;
+    overflow:hidden;background:var(--canvas)}
+  .stepgrid img{width:100%;display:block}
+  .stepgrid figcaption{margin-top:8px;font-size:15px;line-height:1.45;
+    color:var(--amber);text-align:center;padding:0 4px}
+  .rendershot{margin-top:14px}
+  .rendercap{margin-top:10px;font-size:15px;color:var(--amber);text-align:center}
+
+  .blurb{width:80%;margin:18px auto 0}
+
+  .chips{width:80%;margin:14px auto 0;display:flex;gap:8px;flex-wrap:wrap}
+  .chip{font-size:14px;color:var(--teal);background:var(--panel);
+    border:1px solid var(--panel2);border-radius:20px;padding:5px 14px}
+  span.chip{cursor:default}
+  .chip.dead{color:var(--dim)}
+
+  .closer-note{color:var(--amber)}
+
+  footer{max-width:1160px;margin:0 auto;padding:0 24px 64px;color:var(--dim);
+    font-size:15px;border-top:1px solid var(--panel2)}
+  footer .inner{padding-top:24px;max-width:72ch}
 </style>
 </head>
 <body>
+
+<header>
+  <h1>vector-<span class="st">studio</span></h1>
+  <div class="tag">Draw rough. <em>Pin</em> what should change. Any file-editing agent does the geometry.</div>
+  <div class="repoline"><a href="https://github.com/ryangadz/vector-studio-llm">github.com/ryangadz/vector-studio-llm</a> — stdlib-only server, single-file
+    viewer, no keys, no cloud. What is this? → <a href="https://github.com/ryangadz/vector-studio-llm#readme">the README</a>. This page is what it makes.</div>
+</header>
+
 <main>
-  <header>
-    <h1><b>vector</b>-studio <span>LLM</span></h1>
-    <p class="tagline">Sketch it rough, pin what's wrong, let the LLM do the geometry
-    — no pixels, no wasted tokens.</p>
-  </header>
 
-  <div class="cta">
-    <a class="repo" href="https://github.com/ryangadz/vector-studio-llm">View on GitHub</a>
-    <a class="zip" href="https://github.com/ryangadz/vector-studio-llm/archive/refs/heads/main.zip">Download ZIP</a>
-  </div>
+  <section class="project">
+    <div class="phead">
+      <h2>Speaker grille</h2>
+      <span class="meta">2026-08 · remix table · 1 pin round · render: Gemini, over the locked stencil</span>
+    </div>
+    <div class="composite stepgrid">
+      <figure><a href="assets/grille/p1.png"><img src="assets/grille/p1.png" alt="Rough 48 mm circle sketch"></a>
+        <figcaption>1 · start rough — a 48&nbsp;mm circle</figcaption></figure>
+      <figure><a href="assets/grille/p2.png"><img src="assets/grille/p2.png" alt="Pins and notes on the circle"></a>
+        <figcaption>2 · point at it — pins + notes: <i>“6&nbsp;mm holes center, 3&nbsp;mm toward the edges”</i></figcaption></figure>
+      <figure><a href="assets/grille/p3.png"><img src="assets/grille/p3.png" alt="Generated hole field"></a>
+        <figcaption>3 · the LLM does the geometry — 3&nbsp;mm webs, verified</figcaption></figure>
+      <figure><a href="assets/grille/p4.png"><img src="assets/grille/p4.png" alt="Three variants"></a>
+        <figcaption>4 · iterate — three variants, live pin edits</figcaption></figure>
+      <figure><a href="assets/grille/p5.png"><img src="assets/grille/p5.png" alt="Flange, standoffs, screws"></a>
+        <figcaption>5 · real hardware — flange, standoffs, screws</figcaption></figure>
+      <figure><a href="assets/grille/p6.png"><img src="assets/grille/p6.png" alt="Locked stencil export"></a>
+        <figcaption>6 · export — locked stencil for Gemini</figcaption></figure>
+    </div>
+    <a class="composite rendershot" href="assets/grille/p7.png">
+      <img src="assets/grille/p7.png" alt="Final render: walnut, bone, brass">
+    </a>
+    <div class="rendercap">7 · the same geometry, rendered — walnut, bone, brass</div>
+    <p class="blurb">A real part, engineered while it was designed: a grille for real
+      speakers that has to transmit sound perfectly, stay safe for toddler fingers, and
+      come off for cleaning and service. It started as one rough 48&nbsp;mm circle and a pin
+      note — <i>“6&nbsp;mm holes center, 3&nbsp;mm toward the edges”</i> — and the agent computed the
+      90-hole field with 3&nbsp;mm webs, verified in the file. One pin round — and a lot of
+      debate about the physics — because every hole size is an acoustics and safety
+      decision, not decoration. The flange, standoffs, and screw
+      bosses came in the same pin loop, and because the result is plain SVG geometry it
+      accepts any manufacturing technique — and invites community mods. Claude built the
+      print mesh straight from that geometry: two minutes to a printable part, no Fusion
+      modeling at all. Gemini rendered
+      the locked stencil in walnut, bone, and brass — same split as everywhere on this
+      page: vector studio makes the geometry, Gemini makes the picture. Ninety holes of
+      varying sizes is time-consuming for a human to design and manage alone — here it
+      was a sentence and a handful of pins.</p>
+    <div class="chips">
+      <a class="chip" href="https://github.com/ryangadz/vector-studio-llm/blob/main/examples/showcase/speaker-grille.svg">sketch.svg</a>
+      <a class="chip" href="https://github.com/ryangadz/vector-studio-llm/blob/main/examples/showcase/speaker-grille.svg.pins.json">pins.json</a>
+      <span class="chip dead">stencil export</span><span class="chip dead">print mesh</span>
+      <a class="chip" href="assets/grille/p7.png">final render</a>
+    </div>
+  </section>
 
-  <figure>
-    <img class="shot" src="loop-v2.gif" width="840" height="525"
-         alt="The whole loop in 22 seconds: amber pin mode and teal sketch mode announce themselves with frame tints and ghost previews, a rough island is sketched click by click, a pin note asks for exact dimensions and rounded corners, the agent edits the SVG on disk, the viewer reloads with real fillets">
-    <figcaption>The whole loop in ~22 seconds: sketch → pin → the agent edits the file → the viewer reloads.</figcaption>
-  </figure>
+  <section class="project">
+    <div class="phead">
+      <h2>Landscape — storyboarding from a plan view</h2>
+      <span class="meta">2026-08 · plan view → human perspective → render: Gemini</span>
+    </div>
+    <a class="composite" href="assets/landscape-composite.png">
+      <img src="assets/landscape-composite.png" alt="Landscape workflow: pinned point sketch, clean line work, flat fills, photoreal render">
+    </a>
+    <p class="blurb">Built for storyboarding, where the hard problem is holding one
+      viewpoint across scenes. So the scene starts as a plan view — trees as dots, the
+      path as a polygon — and the agent interprets that map from a human perspective into
+      the line work; fills follow, and Gemini renders the frame. Because the camera is
+      derived from the plan, the next scene reuses the same map and stays consistent.
+      Quick, and extremely powerful — and since every tree is its own shape, the same
+      file also splits into a five-layer parallax.</p>
+    <div class="chips">
+      <a class="chip" href="https://github.com/ryangadz/vector-studio-llm/blob/main/examples/showcase/landscape-path-test.svg">sketch.svg</a>
+      <a class="chip" href="https://github.com/ryangadz/vector-studio-llm/blob/main/examples/showcase/landscape-viewpoint-filled.svg">filled.svg</a>
+      <span class="chip dead">parallax.html</span><span class="chip dead">final render</span>
+    </div>
+  </section>
 
-  <h2>Why it's deliberately weak as a vector app</h2>
-  <ol class="why">
-    <li><b>Draw, don't describe.</b> Rough geometry is faster to sketch than to put
-      into words — click out a floor plan in seconds instead of writing "a room
-      about 3 by 2 meters with a notch in the corner…".</li>
-    <li><b>Pins instead of 50 tools.</b> Click a spot, type what should change there.
-      The pin replaces the tool palette; the LLM is the tools.</li>
-    <li><b>The loop is text all the way down.</b> The drawing is an SVG file; pins are
-      a small JSON sidecar with exact mm coordinates. Your agent reads and edits a few
-      KB of text — no screenshot round-trips.</li>
-  </ol>
+  <section class="project">
+    <div class="phead">
+      <h2>Snowflake — a first-timer's first drawing</h2>
+      <span class="meta">2026-08 · one arm + a center point · render: Gemini</span>
+    </div>
+    <a class="composite" href="assets/snowflake-composite.png">
+      <img src="assets/snowflake-composite.png" alt="Snowflake workflow: pointed sketch on mm grid, filled silhouette, photoreal ice render">
+    </a>
+    <p class="blurb">My wife’s first drawing in the tool — and her first in any vector,
+      CAD, or photo-editing software. The instructions were one sentence: draw one side of
+      a snowflake and mark the center. The agent mirrored and arrayed her arm into full
+      six-fold symmetry; the filled silhouette is exactly that geometry. To be plain about
+      the split: the ice render is Gemini’s — vector studio makes geometry, not renders.</p>
+    <div class="chips">
+      <a class="chip" href="https://github.com/ryangadz/vector-studio-llm/blob/main/examples/showcase/snowflake-test.svg">sketch.svg</a>
+      <a class="chip" href="https://github.com/ryangadz/vector-studio-llm/blob/main/examples/showcase/snowflake-test.svg.pins.json">pins.json</a>
+      <span class="chip dead">final render</span>
+    </div>
+  </section>
 
-  <h2 class="t">Two modes, obvious at a glance</h2>
-  <p class="dim">Amber frame = pin mode, teal frame = sketch mode — with a ghost
-  preview of what your next click will do. The controls move between a right rail
-  and a top bar to fit your window.</p>
-  <div class="two">
-    <figure>
-      <img class="shot" src="ui-floor-plan-v2.png"
-           alt="A rough floor plan in pin mode: amber-framed canvas, big PIN and SKETCH mode buttons in the right rail, and a numbered pin open in its popover with a note for the LLM">
-      <figcaption>Pin mode: point at it, type what should change.</figcaption>
-    </figure>
-    <figure>
-      <img class="shot" src="ui-parametric-corners-v2.png"
-           alt="A plate with parametric corner radii in teal sketch mode, controls in the narrow-window top bar: the drag dots sit at the sharp model corners while the arcs are derived">
-      <figcaption>Sketch mode: parametric fillets — the dots stay at the model corners.</figcaption>
-    </figure>
-  </div>
+  <section class="project">
+    <div class="phead">
+      <h2>The gadz.tech logo — a known design</h2>
+      <span class="meta">2026-08 · 3 hours the old way, 2–3 minutes this way</span>
+    </div>
+    <a class="composite" href="assets/array-composite.png">
+      <img src="assets/array-composite.png" alt="Viewer screenshot: twelve-wedge radial array on the mm grid, sketch and pin tools visible">
+    </a>
+    <p class="blurb">This shape is why the tool exists — it’s the gadz.tech logo,
+      rebuilt as a test against a design that already existed. The original took three
+      hours of describing the shape to a chat session, then Fusion work out of
+      frustration, with the wrong file back three times. In vector studio it took two or
+      three minutes: one wedge on the mm grid, the agent placed the other eleven — and
+      once it lived as clean geometry, animating it was the fun part. The fix wasn’t a
+      better description; it was pointing at geometry instead of describing it.</p>
+    <div class="chips">
+      <span class="chip dead">array-test.svg</span><span class="chip dead">viewer.html</span>
+    </div>
+  </section>
 
-  <h2>Quickstart</h2>
-  <p>Two files, no build, no dependencies beyond Python's standard library.
-  The tool never talks to an LLM itself — <b>the filesystem is the interface</b>,
-  so any file-editing agent (Claude Code, Cursor, aider, a local model…)
-  already works with it. That's also why there is no hosted demo:
-  the whole point is your agent editing files on <em>your</em> disk.</p>
-  <pre>git clone https://github.com/ryangadz/vector-studio-llm.git
-cd vector-studio-llm
-python serve.py          <span class="c"># then open http://127.0.0.1:8103/viewer.html</span></pre>
-  <p class="dim">Sketch something, drop a pin, then tell your agent to "check pins".
-  Full docs, the agent contract, and examples are in the
-  <a href="https://github.com/ryangadz/vector-studio-llm#readme">README</a>.</p>
+  <section class="project">
+    <div class="phead">
+      <h2>Gear — a dev-era test</h2>
+      <span class="meta">2026-08 · built while the tool was being built · passed</span>
+    </div>
+    <a class="composite svgwrap" href="assets/gear-test.svg">
+      <img src="assets/gear-test.svg" alt="Gear sketch SVG, raw working state">
+    </a>
+    <p class="blurb">A test from while the tool was still being built — and a passed one.
+      The gear was drawn to check that the sketch-and-pins model held up on a shape with
+      real repetition, and it did; the file is done, kept exactly as the test it was.
+      Dev-era tests belong in a portfolio: they’re where a tool earns its trust.</p>
+    <div class="chips">
+      <a class="chip" href="https://github.com/ryangadz/vector-studio-llm/blob/main/examples/showcase/gear-test.svg">gear-test.svg</a>
+      <a class="chip" href="https://github.com/ryangadz/vector-studio-llm/blob/main/examples/showcase/gear-test.svg.pins.json">gear-test.svg.pins.json</a>
+    </div>
+  </section>
 
-  <footer>MIT licensed ·
-    <a href="https://github.com/ryangadz/vector-studio-llm">ryangadz/vector-studio-llm</a>
-  </footer>
+  <section class="project">
+    <div class="phead">
+      <h2 class="closer-note">App home screen — sketch to shipped</h2>
+      <span class="meta">2026-08-29 · one morning · wireframe → pin round → mock → shipped</span>
+    </div>
+    <a class="composite" href="assets/app-home-composite.png">
+      <img src="assets/app-home-composite.png" alt="A family photo app's home screen: wireframe, pin round, mock, shipped — four stages in one morning">
+    </a>
+    <p class="blurb">The closer, and the loop off the drawing board: a real app’s home
+      screen went from wireframe to shipped in one morning. The wireframe is a vector
+      studio sketch; the pin round is visible — <i>“chip → top-left”</i> — and the shipped
+      screen honors it. UI is geometry too: the same pins that moved a speaker hole moved a
+      badge chip.</p>
+    <div class="chips">
+      <span class="chip dead">home-badges.svg</span><span class="chip dead">home-badges.svg.pins.json</span>
+      <span class="chip dead">shipped screen</span>
+    </div>
+  </section>
+
 </main>
+
+<footer>
+  <div class="inner">
+    Roster not yet shot: floor-plan / demo-room (needs a composite), speaker-grille CNC
+    photo if the physical part gets made.
+    Every project section above is the same template:
+    composite strip · four-sentence paragraph · links to the actual files. Adding a project
+    = adding assets + one block.
+  </div>
+</footer>
+
 </body>
 </html>

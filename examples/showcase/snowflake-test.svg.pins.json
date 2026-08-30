@@ -1,0 +1,7 @@
+{
+  "pxPerMm": 2,
+  "convention": "mm measured in SVG user units / pxPerMm, origin = viewBox top-left, y down",
+  "pins": [],
+  "file": "sketches/snowflake-test.svg",
+  "updated": "2026-08-28T00:05:00-0700"
+}
