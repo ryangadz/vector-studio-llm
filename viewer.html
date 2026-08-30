@@ -111,23 +111,28 @@
           border-color:var(--amber);font-weight:700}
   #updBtn.show{display:inline-block}
   #updBtn:hover{color:var(--graphite);border-color:#f0b458;background:#f0b458}
+  /* popovers use normal UI cursors — the canvas's pin-glyph cursor has its
+     hotspot at the TIP, which makes aiming at small controls feel broken */
   #lenEdit{position:absolute;width:72px;background:var(--panel);color:var(--bone);
            border:1.5px solid var(--amber);border-radius:5px;padding:3px 6px;
-           font:600 13px var(--mono);z-index:6;box-shadow:0 2px 8px rgba(0,0,0,.6)}
+           font:600 13px var(--mono);z-index:6;box-shadow:0 2px 8px rgba(0,0,0,.6);
+           cursor:text}
   #pinPop{position:absolute;width:210px;background:var(--panel);color:var(--bone);
           border:1.5px solid var(--amber);border-radius:8px;padding:8px 10px;
-          z-index:6;box-shadow:0 3px 12px rgba(0,0,0,.6)}
+          z-index:6;box-shadow:0 3px 12px rgba(0,0,0,.6);cursor:default}
   #pinPop .head{display:flex;gap:7px;align-items:center;margin-bottom:5px}
   #pinPop .badge{width:20px;height:20px;border-radius:50%;background:var(--amber);
        color:var(--graphite);font-weight:700;font-size:11px;display:flex;flex:none;
        align-items:center;justify-content:center}
   #pinPop .mm{font-family:var(--mono);font-size:11px;color:var(--teal);flex:1;
        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #pinPop .del{background:none;border:none;color:var(--dim);font-size:15px;padding:0 2px}
-  #pinPop .del:hover{color:#d16a5a}
+  #pinPop .del{background:none;border:none;color:var(--dim);font-size:18px;
+       line-height:1;padding:7px 12px;margin:-7px -8px -7px 0;border-radius:7px;
+       cursor:pointer;flex:none}
+  #pinPop .del:hover{color:#d16a5a;background:#3a3833}
   #pinPop input{width:100%;background:transparent;border:none;
        border-bottom:1px dashed #46443d;color:var(--bone);font-size:13px;
-       padding:2px 0;outline:none}
+       padding:2px 0;outline:none;cursor:text}
   #pinPop input:focus{border-bottom-color:var(--amber)}
   #zoomPct{font-family:var(--mono);color:var(--dim);min-width:40px;text-align:center}
   #sketchCtl{display:none}
@@ -1173,8 +1178,14 @@ function renderPins() { if (S.svgEl) drawOverlay(); }
    to the × button, and could add a vertex under the length editor).
    pointerup stays unstopped: drags end on window listeners. */
 function containPop(el) {
-  for (const ev of ["pointerdown", "click", "dblclick", "mousemove"])
+  for (const ev of ["click", "dblclick", "mousemove"])
     el.addEventListener(ev, e => e.stopPropagation());
+  el.addEventListener("pointerdown", e => {
+    e.stopPropagation();
+    // a press that STARTS in a popover can never become a canvas click —
+    // slipping off the x used to release as an ancestor-targeted click
+    downAt = null;
+  });
   el.addEventListener("pointerenter", hideGhost);
 }
 function closePinPop() { $("pinPop")?.remove(); }

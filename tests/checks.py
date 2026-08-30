@@ -191,6 +191,27 @@ try:
         check("clicking into the note input adds no pin",
               pg.evaluate("vs.S.pins.length") == 1 and
               pg.eval_on_selector("#pinPop input", "e => e.value") == "test note")
+        # the x must be a real target: big, with UI cursors (the canvas's
+        # pin-glyph cursor made aiming at a tiny x feel broken)
+        box = pg.eval_on_selector("#pinPop .del", """e => {
+            const r = e.getBoundingClientRect();
+            return {x: r.x + r.width/2, y: r.y + r.height/2, w: r.width, h: r.height};
+        }""")
+        check("x target is comfortably big (>=28px both ways)",
+              box["w"] >= 28 and box["h"] >= 28, str(box))
+        check("popover uses UI cursors, not the canvas glyph",
+              pg.eval_on_selector("#pinPop", "e => getComputedStyle(e).cursor") == "default"
+              and pg.eval_on_selector("#pinPop .del", "e => getComputedStyle(e).cursor") == "pointer")
+        # slip-off: press the x, slide off it, release on the canvas — that
+        # click targets an ancestor and must do NOTHING (no pin, no delete)
+        pg.mouse.move(box["x"], box["y"])
+        pg.mouse.down()
+        pg.mouse.move(box["x"] + 120, box["y"] + 60, steps=4)
+        pg.mouse.up()
+        pg.wait_for_timeout(250)
+        check("slipping off the x clicks nothing",
+              pg.evaluate("vs.S.pins.length") == 1 and
+              pg.evaluate("!!document.getElementById('pinPop')"))
         pg.click("#pinPop .del")
         pg.wait_for_timeout(250)
         check("the x deletes the pin without dropping a new one",
