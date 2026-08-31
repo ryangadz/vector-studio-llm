@@ -437,7 +437,7 @@ $("stageWrap").addEventListener("wheel", e => {
   // Delta-proportional so trackpads work: a pinch fires dozens of tiny
   // deltas per gesture (a fixed step per event compounds to warp speed);
   // anchored at the cursor so the point under it stays put while zooming.
-  zoomAt(e.clientX, e.clientY, Math.exp(-dy * 0.0015));
+  zoomAt(e.clientX, e.clientY, Math.exp(-dy * 0.003));
 }, { passive: false });
 // Two-finger double-tap on a trackpad arrives as a double right-click:
 // snap back to the fitted, centered view.
