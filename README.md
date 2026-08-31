@@ -196,11 +196,24 @@ already briefed.
 
 ## Use with Claude
 
-This repo ships the contract as a ready-made Claude skill:
-[skills/vector-studio/](skills/vector-studio/). Copy that folder into a
-project's `.claude/skills/` (or your personal skills directory) and Claude
-Code sessions pick it up automatically whenever sketches or pins come up —
-no need to point them at this README first. It's a convenience, not a
+This repo ships the contract as a ready-made Claude skill, installable as a
+plugin — the repo is its own plugin marketplace. In Claude Code:
+
+```
+/plugin marketplace add ryangadz/vector-studio-llm
+/plugin install vector-studio@vector-studio-llm
+```
+
+In the Claude desktop app (and Cowork): Settings → Plugins, add
+`ryangadz/vector-studio-llm` as a marketplace, install **Vector Studio LLM**.
+
+Either way, sessions pick the skill up automatically whenever sketches or
+pins come up — no need to point them at this README first — and updates
+arrive with new plugin versions instead of going stale on your disk.
+
+Prefer no plugins? Copying [skills/vector-studio/](skills/vector-studio/)
+into a project's `.claude/skills/` (or your personal skills directory) still
+works — same skill, minus the updates. It's a convenience, not a
 requirement: any other agent keeps working from the contract above and
 [AGENTS.md](AGENTS.md) exactly as before.
 

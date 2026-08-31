@@ -1,0 +1,14 @@
+{
+  "name": "vector-studio-llm",
+  "description": "The Vector Studio LLM skill, straight from the tool's own repo.",
+  "owner": { "name": "Ryan Gadz", "url": "https://github.com/ryangadz" },
+  "plugins": [
+    {
+      "name": "vector-studio",
+      "source": "./",
+      "displayName": "Vector Studio LLM",
+      "description": "Close the loop with Vector Studio LLM sketches: read pins from the .pins.json sidecar, edit the SVG geometry in place, and write the sidecar back.",
+      "version": "0.2.0"
+    }
+  ]
+}

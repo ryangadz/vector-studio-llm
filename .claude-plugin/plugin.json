@@ -1,0 +1,11 @@
+{
+  "name": "vector-studio",
+  "displayName": "Vector Studio LLM",
+  "description": "Close the loop with Vector Studio LLM sketches: read pins from the .pins.json sidecar, edit the SVG geometry in place, and write the sidecar back.",
+  "version": "0.2.0",
+  "author": { "name": "Ryan Gadz", "url": "https://github.com/ryangadz" },
+  "homepage": "https://ryangadz.github.io/vector-studio-llm/",
+  "repository": "https://github.com/ryangadz/vector-studio-llm",
+  "license": "MIT",
+  "keywords": ["svg", "vector", "sketch", "pins", "geometry"]
+}
