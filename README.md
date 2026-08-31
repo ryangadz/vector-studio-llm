@@ -218,6 +218,28 @@ itself, so even a session with no shell access can start the viewer for you
 Since the plugin install is a full clone of this repo, the viewer it starts
 is the real `serve.py`; no separate checkout needed.
 
+### About the install warning
+
+Because of that viewer manager, the Claude app shows a "this plugin
+includes local MCP servers" warning at install. The warning is about the
+*category* — any plugin that runs a local process gets it, because
+Anthropic can't audit what the code does. Here's what this one does:
+[mcp/viewer_manager.py](mcp/viewer_manager.py) is 206 lines of Python,
+standard library only, and its entire surface is three tools:
+
+- **`viewer_status`** — checks whether anything answers on
+  `http://127.0.0.1:<port>` (default 8103).
+- **`start_viewer`** — runs the bundled `serve.py` to serve a sketch
+  folder you name, and remembers what it started in one state file,
+  `~/.vector-studio-viewer.json`.
+- **`stop_viewer`** — stops a viewer it started.
+
+That's the whole thing. It never reads or edits your sketches (edits are
+made by the Claude session itself, through its normal permission-gated
+file tools), never talks to anything but localhost, phones nothing home,
+and every tool call shows you a permission prompt before it runs. It's
+short enough to read before you click Continue — please do.
+
 Prefer no plugins? Copying [skills/vector-studio/](skills/vector-studio/)
 into a project's `.claude/skills/` (or your personal skills directory) still
 works — same skill, minus the updates. It's a convenience, not a
