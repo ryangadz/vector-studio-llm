@@ -15,23 +15,29 @@ repo; a "project" is just a folder of SVGs + sidecars — any folder the
 user chooses. Never copy the tool into a project. If you don't know where
 the tool is cloned, ask the user.
 
-**Starting the server:** you never need it for your own work — the loop is
-file edits, and the viewer auto-reloads. But when the user invokes the loop
-("check pins", "start vector studio") and the viewer isn't already up,
-start it for them. In order:
+**Step zero, every invocation: make sure the viewer is up.** The user
+saying "check pins" (or anything that fires this skill) means they are at
+the bench — a running viewer is part of the deal, even when there are no
+pins to address yet ("no pins" often means they're about to start
+sketching). So before the pins work:
 
-1. Probe first: if http://127.0.0.1:8103 already answers, the viewer is
-   running — someone pinning in it usually means it is. Don't start a
-   second copy.
-2. Otherwise run, from the tool folder, as a background shell command:
-   `python serve.py --root <project folder>` — where the project folder is
-   wherever the user's sketches live (their call, often the folder you're
-   working in; ask if unclear). Plain `python serve.py` serves the tool's
-   own folder; `--port <n>` runs several projects at once.
+1. Probe http://127.0.0.1:8103 (and any other port the user works on). If
+   it answers, the viewer is running — don't start a second copy.
+2. If it doesn't answer, start it: from the tool folder, as a background
+   shell command, `python serve.py --root <project folder>` — the project
+   folder is wherever the user's sketches live (their call, often the
+   folder you're working in; ask if unclear). Plain `python serve.py`
+   serves the tool's own folder; `--port <n>` runs several projects at
+   once. Tell the user the URL once it's up.
 3. Your environment's normal permission prompt on that command IS the ask —
    let it do the asking. Never launch the server via GUI automation (the OS
    Run dialog, clicking a .bat, window scripting). If your environment has
    no shell at all, hand the user the one command to run themselves.
+
+The server is for the human, not for you: your own work is plain file
+edits, and the viewer auto-reloads on save. Needing to edit never requires
+the server — but the human sketching always does, which is why starting it
+is step zero rather than an afterthought.
 
 ## The agent contract (read before editing any sketch)
 
