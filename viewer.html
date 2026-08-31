@@ -409,7 +409,13 @@ $("z100").onclick = () => { S.zoom = 1; applyZoom(); };
 $("stageWrap").addEventListener("wheel", e => {
   if (!e.ctrlKey) return;
   e.preventDefault();
-  S.zoom *= e.deltaY < 0 ? 1.15 : 1 / 1.15;
+  let dy = e.deltaY;
+  if (e.deltaMode === 1) dy *= 16;       // lines → px
+  else if (e.deltaMode === 2) dy *= 120; // pages → px
+  // Delta-proportional so trackpads work: a pinch fires dozens of tiny
+  // deltas per gesture (a fixed step per event compounds to warp speed),
+  // while one mouse notch (~120px) still lands on the old ×1.15.
+  S.zoom *= Math.exp(-dy * 0.00116);
   applyZoom();
 }, { passive: false });
 
