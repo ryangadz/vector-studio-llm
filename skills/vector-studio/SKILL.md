@@ -11,11 +11,27 @@ does the math and edits the SVG file directly. No screenshots — the SVG +
 sidecar round-trip is plain text with exact coordinates.
 
 **Tool vs project:** the tool is one cloned copy of the vector-studio-llm
-repo; a "project" is just a folder of SVGs + sidecars. Never copy the tool
-into a project. Server: `python serve.py` from the tool folder serves it at
-http://127.0.0.1:8103; `--root <folder>` serves any project folder;
-`--port <n>` runs several projects at once. If you don't know where the
-tool is cloned, ask the user.
+repo; a "project" is just a folder of SVGs + sidecars — any folder the
+user chooses. Never copy the tool into a project. If you don't know where
+the tool is cloned, ask the user.
+
+**Starting the server:** you never need it for your own work — the loop is
+file edits, and the viewer auto-reloads. But when the user invokes the loop
+("check pins", "start vector studio") and the viewer isn't already up,
+start it for them. In order:
+
+1. Probe first: if http://127.0.0.1:8103 already answers, the viewer is
+   running — someone pinning in it usually means it is. Don't start a
+   second copy.
+2. Otherwise run, from the tool folder, as a background shell command:
+   `python serve.py --root <project folder>` — where the project folder is
+   wherever the user's sketches live (their call, often the folder you're
+   working in; ask if unclear). Plain `python serve.py` serves the tool's
+   own folder; `--port <n>` runs several projects at once.
+3. Your environment's normal permission prompt on that command IS the ask —
+   let it do the asking. Never launch the server via GUI automation (the OS
+   Run dialog, clicking a .bat, window scripting). If your environment has
+   no shell at all, hand the user the one command to run themselves.
 
 ## The agent contract (read before editing any sketch)
 
