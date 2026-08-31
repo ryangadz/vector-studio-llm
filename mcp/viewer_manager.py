@@ -42,6 +42,30 @@ def alive(port):
         return False
 
 
+def my_version():
+    try:
+        return json.loads((TOOL_ROOT / ".claude-plugin" / "plugin.json")
+                          .read_text("utf-8"))["version"]
+    except Exception:
+        return "unknown"
+
+
+def served_version(port):
+    try:
+        with urllib.request.urlopen(
+                "http://127.0.0.1:%d/api/version" % port, timeout=1.5) as r:
+            return json.loads(r.read().decode())["version"]
+    except Exception:
+        return None  # pre-0.3.4 server, or not a vector-studio server
+
+
+def ver_tuple(v):
+    try:
+        return tuple(int(x) for x in v.split("."))
+    except Exception:
+        return None
+
+
 def read_pids():
     try:
         return {int(k): v for k, v in json.loads(PIDFILE.read_text()).items()}
@@ -61,7 +85,21 @@ def viewer_status(args):
     if alive(port):
         root = read_pids().get(port, {}).get("root")
         where = " serving %s" % root if root else ""
-        return "Viewer is running at http://127.0.0.1:%d%s" % (port, where)
+        mine, served = my_version(), served_version(port)
+        if served != mine:
+            sv, mv = ver_tuple(served or ""), ver_tuple(mine)
+            if served is not None and sv and mv and sv > mv:
+                return ("Viewer is running at http://127.0.0.1:%d%s and is a "
+                        "NEWER build (%s) than this session's plugin snapshot "
+                        "(%s) - leave it running." % (port, where, served, mine))
+            return ("Viewer is running at http://127.0.0.1:%d%s BUT it's an "
+                    "older build (%s; this plugin is %s). Ask the user first "
+                    "- they may be mid-sketch - then stop_viewer + "
+                    "start_viewer with the same root to pick up the update."
+                    % (port, where, served or "pre-0.3.4, no version endpoint",
+                       mine))
+        return "Viewer is running at http://127.0.0.1:%d%s (v%s, current)" % (
+            port, where, mine)
     return ("No viewer on port %d. Use start_viewer with root = the folder "
             "of the user's sketches (ask them which folder if unclear)." % port)
 
@@ -180,7 +218,7 @@ def main():
                 "protocolVersion": params.get("protocolVersion", "2024-11-05"),
                 "capabilities": {"tools": {}},
                 "serverInfo": {"name": "vector-studio-viewer",
-                               "version": "0.3.0"}}})
+                               "version": my_version()}}})
         elif method == "tools/list":
             send({"jsonrpc": "2.0", "id": mid, "result": {"tools": TOOLS}})
         elif method == "tools/call":

@@ -2,7 +2,7 @@
   "name": "vector-studio",
   "displayName": "Vector Studio LLM",
   "description": "Draw rough. Pin what should change. Claude does the geometry, editing the SVG file in place - no screenshots, no hand-typed coordinates.",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "author": {
     "name": "Ryan Gadz",
     "url": "https://github.com/ryangadz"

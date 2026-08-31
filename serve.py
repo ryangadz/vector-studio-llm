@@ -6,6 +6,7 @@ viewer.html three small APIs:
 
   GET  /api/list                 -> {"files": ["test/plate-v2-layout.svg", ...]}
   GET  /api/mtime?file=<rel.svg> -> {"mtime": ..., "pins_mtime": ...}
+  GET  /api/version              -> {"version": "<tool version or unknown>"}
   GET  /api/pins?file=<rel.svg>  -> sidecar JSON ({} if none yet)
   POST /api/pins                 -> body {"file": <rel.svg>, "data": {...}}
                                     writes <file>.pins.json atomically
@@ -44,6 +45,13 @@ def safe_resolve(rel: str) -> Path | None:
     return p
 
 
+def tool_version() -> str:
+    try:
+        return json.loads((HERE / ".claude-plugin" / "plugin.json").read_text("utf-8"))["version"]
+    except Exception:
+        return "unknown"
+
+
 def list_svgs() -> list[str]:
     out = []
     for p in ROOT.rglob("*.svg"):
@@ -78,6 +86,8 @@ class Handler(SimpleHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/api/list":
             return self.send_json({"files": list_svgs()})
+        if url.path == "/api/version":
+            return self.send_json({"version": tool_version()})
         if url.path in ("/api/mtime", "/api/pins"):
             rel = parse_qs(url.query).get("file", [""])[0]
             p = safe_resolve(rel)

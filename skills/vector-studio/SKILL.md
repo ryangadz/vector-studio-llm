@@ -26,7 +26,11 @@ sketching). So before the pins work:
    and nothing else: `viewer_status` first; if nothing is running,
    `start_viewer` with `root` = wherever the user's sketches live (their
    call, often the folder you're working in; ask if unclear). The
-   tool-permission prompt IS the ask. Tell the user the URL.
+   tool-permission prompt IS the ask. Tell the user the URL. If
+   `viewer_status` says the running viewer is an OLDER build, ask the user
+   before restarting (they may be mid-sketch), then `stop_viewer` +
+   `start_viewer` with the same root; if it reports a newer build, leave
+   it alone.
 2. No viewer tools (skill copied without the plugin) but a real shell?
    Probe http://127.0.0.1:8103; if silent, run from the tool folder as a
    background command: `python serve.py --root <project folder>`
