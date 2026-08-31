@@ -394,18 +394,40 @@ async function pollMtime() {
 function applyZoom() {
   if (!S.svgEl) return;
   S.svgEl.style.width = (S.vb.width * S.zoom) + "px";
+  // Center the sketch while it's smaller than the window; the margins
+  // collapse to 0 once it overflows and scrolling takes over.
+  const wrap = $("stageWrap"), st = $("stage");
+  st.style.marginLeft = Math.max(0, (wrap.clientWidth  - 48 - st.offsetWidth)  / 2) + "px";
+  st.style.marginTop  = Math.max(0, (wrap.clientHeight - 48 - st.offsetHeight) / 2) + "px";
   $("zoomPct").textContent = Math.round(S.zoom * 100) + "%";
   drawOverlay();
 }
+function zoomAt(clientX, clientY, factor) {
+  if (!S.svgEl) return;
+  const wrap = $("stageWrap"), r = S.svgEl.getBoundingClientRect();
+  const px = (clientX - r.left) / S.zoom;   // anchor point, viewBox units
+  const py = (clientY - r.top)  / S.zoom;
+  S.zoom *= factor;
+  applyZoom();
+  const r2 = S.svgEl.getBoundingClientRect();
+  wrap.scrollLeft += (r2.left + px * S.zoom) - clientX;
+  wrap.scrollTop  += (r2.top  + py * S.zoom) - clientY;
+}
+function wrapCenter() {
+  const r = $("stageWrap").getBoundingClientRect();
+  return [r.left + r.width / 2, r.top + r.height / 2];
+}
 function fitZoom() {
-  const w = $("stageWrap").clientWidth - 60, h = $("stageWrap").clientHeight - 60;
+  const wrap = $("stageWrap");
+  const w = wrap.clientWidth - 60, h = wrap.clientHeight - 60;
   S.zoom = (w > 40 && h > 40) ? Math.min(w / S.vb.width, h / S.vb.height) : 1;
+  wrap.scrollLeft = 0; wrap.scrollTop = 0;
   applyZoom();
 }
-$("zIn").onclick  = () => { S.zoom *= 1.25; applyZoom(); };
-$("zOut").onclick = () => { S.zoom /= 1.25; applyZoom(); };
+$("zIn").onclick  = () => zoomAt(...wrapCenter(), 1.25);
+$("zOut").onclick = () => zoomAt(...wrapCenter(), 1 / 1.25);
 $("zFit").onclick = fitZoom;
-$("z100").onclick = () => { S.zoom = 1; applyZoom(); };
+$("z100").onclick = () => zoomAt(...wrapCenter(), 1 / S.zoom);
 $("stageWrap").addEventListener("wheel", e => {
   if (!e.ctrlKey) return;
   e.preventDefault();
@@ -413,11 +435,19 @@ $("stageWrap").addEventListener("wheel", e => {
   if (e.deltaMode === 1) dy *= 16;       // lines → px
   else if (e.deltaMode === 2) dy *= 120; // pages → px
   // Delta-proportional so trackpads work: a pinch fires dozens of tiny
-  // deltas per gesture (a fixed step per event compounds to warp speed),
-  // while one mouse notch (~120px) still lands on the old ×1.15.
-  S.zoom *= Math.exp(-dy * 0.00116);
-  applyZoom();
+  // deltas per gesture (a fixed step per event compounds to warp speed);
+  // anchored at the cursor so the point under it stays put while zooming.
+  zoomAt(e.clientX, e.clientY, Math.exp(-dy * 0.0015));
 }, { passive: false });
+// Two-finger double-tap on a trackpad arrives as a double right-click:
+// snap back to the fitted, centered view.
+let lastCtxTap = 0;
+$("stageWrap").addEventListener("contextmenu", e => {
+  e.preventDefault();
+  const now = performance.now();
+  if (now - lastCtxTap < 450) fitZoom();
+  lastCtxTap = now;
+});
 
 /* ---------- modes ---------- */
 function setMode(m) {
