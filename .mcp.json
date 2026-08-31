@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vector-studio-viewer": {
+      "command": "python",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/viewer_manager.py"]
+    }
+  }
+}

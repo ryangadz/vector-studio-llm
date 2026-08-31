@@ -211,6 +211,13 @@ Either way, sessions pick the skill up automatically whenever sketches or
 pins come up — no need to point them at this README first — and updates
 arrive with new plugin versions instead of going stale on your disk.
 
+The plugin also bundles a tiny **viewer manager** (an MCP process manager,
+[mcp/viewer_manager.py](mcp/viewer_manager.py)): the Claude app launches it
+itself, so even a session with no shell access can start the viewer for you
+— you get one ordinary tool-permission prompt, never desktop automation.
+Since the plugin install is a full clone of this repo, the viewer it starts
+is the real `serve.py`; no separate checkout needed.
+
 Prefer no plugins? Copying [skills/vector-studio/](skills/vector-studio/)
 into a project's `.claude/skills/` (or your personal skills directory) still
 works — same skill, minus the updates. It's a convenience, not a
@@ -255,8 +262,11 @@ If a drawing outgrows the loop, it's a plain SVG — open it in Inkscape.
   file-editing agent closes the loop.
 - Mode 1 (maybe): an optional bring-your-own-key bridge (env var only,
   server-side) with a "send pins" action for agents that can't touch files.
-- MCP server: probably never — the filesystem already is the interface; open
-  an issue if your stack disagrees.
+- MCP for *editing*: probably never — the filesystem already is the
+  interface; open an issue if your stack disagrees. The one exception,
+  shipped 2026-08-31: the plugin bundles an MCP *process manager* that
+  starts/stops the viewer for sandboxed Claude sessions. It never touches
+  a sketch.
 
 MIT licensed. Built by [Ryan Gadz](https://github.com/ryangadz) and Claude,
 through the loop itself — the first drawings it edited were the sketches that

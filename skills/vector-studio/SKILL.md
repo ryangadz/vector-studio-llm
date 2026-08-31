@@ -21,18 +21,23 @@ the bench — a running viewer is part of the deal, even when there are no
 pins to address yet ("no pins" often means they're about to start
 sketching). So before the pins work:
 
-1. Probe http://127.0.0.1:8103 (and any other port the user works on). If
-   it answers, the viewer is running — don't start a second copy.
-2. If it doesn't answer, start it: from the tool folder, as a background
-   shell command, `python serve.py --root <project folder>` — the project
-   folder is wherever the user's sketches live (their call, often the
-   folder you're working in; ask if unclear). Plain `python serve.py`
-   serves the tool's own folder; `--port <n>` runs several projects at
-   once. Tell the user the URL once it's up.
-3. Your environment's normal permission prompt on that command IS the ask —
-   let it do the asking. Never launch the server via GUI automation (the OS
-   Run dialog, clicking a .bat, window scripting). If your environment has
-   no shell at all, hand the user the one command to run themselves.
+1. If you have the plugin's viewer tools — `viewer_status` /
+   `start_viewer` from the **vector-studio-viewer** MCP server — use them
+   and nothing else: `viewer_status` first; if nothing is running,
+   `start_viewer` with `root` = wherever the user's sketches live (their
+   call, often the folder you're working in; ask if unclear). The
+   tool-permission prompt IS the ask. Tell the user the URL.
+2. No viewer tools (skill copied without the plugin) but a real shell?
+   Probe http://127.0.0.1:8103; if silent, run from the tool folder as a
+   background command: `python serve.py --root <project folder>`
+   (`--port <n>` runs several projects at once) — the shell permission
+   prompt is the ask.
+3. NEVER start the server by GUI automation or desktop control — not the
+   OS Run dialog, not clicking a .bat, not driving a terminal window, not
+   taking over the computer because your shell is sandboxed. A sandbox is
+   a boundary, not a puzzle: if neither the viewer tools nor a shell can
+   do it, hand the user the one command to run themselves and carry on
+   with the pins work.
 
 The server is for the human, not for you: your own work is plain file
 edits, and the viewer auto-reloads on save. Needing to edit never requires
