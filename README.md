@@ -211,6 +211,11 @@ Either way, sessions pick the skill up automatically whenever sketches or
 pins come up — no need to point them at this README first — and updates
 arrive with new plugin versions instead of going stale on your disk.
 
+For maintainers and forks: a release has to land through a **merged pull
+request** that bumps the version in `.claude-plugin/plugin.json` and
+`.claude-plugin/marketplace.json`. A direct push to `main` does not trigger
+the Claude marketplace sync, so installs stay on the last synced version.
+
 The plugin also bundles a tiny **viewer manager** (an MCP process manager,
 [mcp/viewer_manager.py](mcp/viewer_manager.py)): the Claude app launches it
 itself, so even a session with no shell access can start the viewer for you
