@@ -67,6 +67,7 @@
   #fname{font-family:var(--mono);color:var(--teal)}
   #status{font-family:var(--mono);font-size:11.5px;color:var(--dim)}
   #status.live{color:var(--teal)} #status.err{color:#d16a5a} #status.hold{color:var(--amber)}
+  #ver{font-family:var(--mono);font-size:11px;color:var(--dim);cursor:default}
   .modes{order:1;display:flex;flex-direction:column;gap:12px}
   button.bigmode{
     display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;
@@ -210,7 +211,7 @@
 </div>
 <aside>
   <div class="leftcol">
-    <div class="brand"><b>vector-<i>studio</i></b><br>
+    <div class="brand"><b>vector-<i>studio</i></b> <span id="ver"></span><br>
       <span id="fname"></span> <span id="status">…</span></div>
     <div class="smallctl">
       <div class="row">
@@ -317,7 +318,23 @@ if (!FILE) {
    DOM these bindings need, and one null deref here kills the whole script */
 if (FILE) {
 
+/* the running server's version, on screen — a viewer that is silently an old
+   bundle is the one fault you cannot see in the drawing itself */
+async function showVersion() {
+  const el = $("ver");
+  if (!el) return;
+  try {
+    const j = await (await fetch("/api/version")).json();
+    el.textContent = "v" + j.version;
+    el.title = "vector-studio " + j.version;
+  } catch {
+    el.textContent = "v?";
+    el.title = "this server is too old to report its version (pre-0.3.4)";
+  }
+}
+
 async function init() {
+  showVersion();
   await loadPins();
   await loadSvg(true);
   if (qs.get("mode") === "sketch") setMode("sketch");
