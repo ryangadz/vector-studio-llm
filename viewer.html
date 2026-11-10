@@ -256,10 +256,11 @@
     <b>pin mode:</b> click the drawing, type what should change; click a pin to read/edit it ·
     <b>sketch:</b> click points · <b>click start</b> close · <b>click last point / Enter</b> finish open ·
     <b>Esc</b> cancel · <b>Backspace</b> drop last ·
-    <b>Shift</b> 0/45/90° · <b>drag dot</b> move · <b>Alt+click dot</b> delete ·
+    <b>Shift</b> 0/45/90° · <b>drag dot</b> move · <b>click dot</b> select · <b>Shift+click</b> select more ·
+    <b>drag a selected dot</b> move them together · <b>Alt+click dot</b> delete ·
     <b>click a line</b> add point · <b>2×click line</b> type length ·
-    <b>2×click dot</b> corner radius · <b>drag empty</b> box-select ·
-    <b>Del</b> delete · <b>Ctrl+C/V</b> copy/paste selection · <b>Ctrl+Z</b> undo</div>
+    <b>2×click dot</b> corner radius · <b>drag empty</b> box-select shapes or dots ·
+    <b>Del</b> delete selection · <b>Ctrl+C/V</b> copy/paste selection · <b>Ctrl+Z</b> undo</div>
 </aside>
 <div id="toast"></div>
 
@@ -276,6 +277,7 @@ const S = {
   mode: "pin", drawing: null, dragging: null, dragEndAt: 0,
   undoStack: [], redoStack: [], svgSaveTimer: null, svgDirty: false, saving: false,
   selection: [], selecting: null, pasting: null,
+  ptSel: [],   // selected vertices [{el, idx}] — never alongside a shape selection
 };
 let boxStart = null;   // pending box-select / move-selection drag
 let statusHold = 0;   // declared up top — a late declaration once dead-zoned setStatus
@@ -372,7 +374,7 @@ async function loadSvg(first) {
   const sc = parseFloat(svg.getAttribute("data-vs-scale"));
   if (sc > 0) { S.pxPerMm = sc; $("scaleIn").value = sc; }
   setUnit(svg.getAttribute("data-vs-unit") || S.unit, false);
-  S.undoStack = []; S.redoStack = []; S.drawing = null; S.selection = []; S.selecting = null;
+  S.undoStack = []; S.redoStack = []; S.drawing = null; S.selection = []; S.ptSel = []; S.selecting = null;
   S.pasting = null; $("drawHint").classList.remove("show"); closePinPop();
   sketchEls().forEach(el => { if (el.tagName === "path") regenD(el); });  // self-heal derived d
   if (first) fitZoom(); else applyZoom();
@@ -732,7 +734,7 @@ function restoreSketch(snap) {
     const d = new DOMParser().parseFromString(`<svg xmlns="${NS}">${html}</svg>`, "image/svg+xml");
     insertSketchEl(d.documentElement.firstElementChild);
   }
-  S.selection = [];
+  S.selection = []; S.ptSel = [];
   drawOverlay(); scheduleSvgSave();
 }
 function pushUndo() {
@@ -853,6 +855,7 @@ function insertVertex(hit) {
   const pts = getPts(hit.el);
   pts.splice(hit.i + 1, 0, [+hit.q[0].toFixed(1), +hit.q[1].toFixed(1)]);
   setPts(hit.el, pts);
+  for (const s of S.ptSel) if (s.el === hit.el && s.idx > hit.i) s.idx++;   // same dots stay selected
   if (hit.el.tagName === "path") {         // radii are keyed by vertex index — shift them
     const nm = new Map();
     for (const [i, r] of getFillets(hit.el)) nm.set(i > hit.i ? i + 1 : i, r);
@@ -909,7 +912,8 @@ function applyRadius(el, idx, mm) {
   const fm = getFillets(el);
   if (mm > 0) fm.set(idx, mm * S.pxPerMm); else fm.delete(idx);
   S.selection = [];                       // conversion may replace the element
-  setFillets(el, fm);
+  const live = setFillets(el, fm);
+  for (const s of S.ptSel) if (s.el === el) s.el = live;   // the dot stays selected
   drawSketchLayer(); scheduleSvgSave();
   toast(mm > 0 ? `corner radius ${fmtLen(mm)}` : "radius removed");
 }
@@ -957,8 +961,9 @@ function applyLen(hit, mm) {
   toast(`side set to ${fmtLen(mm)}${note}`);
 }
 
-/* ---------- box-select: drag empty canvas; only fully-enclosed shapes select ---------- */
-function clearSelection() { S.selection = []; drawSketchLayer(); }
+/* ---------- box-select: drag empty canvas; fully-enclosed shapes select, or —
+   when the box holds no whole shape — the dots inside it ---------- */
+function clearSelection() { S.selection = []; S.ptSel = []; drawSketchLayer(); }
 function selBounds() {
   let x1 = 1e9, y1 = 1e9, x2 = -1e9, y2 = -1e9;
   for (const el of S.selection) for (const p of getPts(el)) {
@@ -1007,11 +1012,16 @@ function boxUp() {
     const { a, b } = S.selecting;
     const x1 = Math.min(a.x, b.x) - 0.01, x2 = Math.max(a.x, b.x) + 0.01;
     const y1 = Math.min(a.y, b.y) - 0.01, y2 = Math.max(a.y, b.y) + 0.01;
-    S.selection = sketchEls().filter(el => getPts(el).every(p =>
-      p[0] >= x1 && p[0] <= x2 && p[1] >= y1 && p[1] <= y2));
-    toast(S.selection.length
-      ? `${S.selection.length} shape${S.selection.length > 1 ? "s" : ""} selected — drag moves, Del deletes, Esc deselects`
-      : "no shape fully inside the box");
+    const inBox = p => p[0] >= x1 && p[0] <= x2 && p[1] >= y1 && p[1] <= y2;
+    S.selection = sketchEls().filter(el => getPts(el).every(inBox));
+    S.ptSel = [];
+    if (!S.selection.length)             // no whole shape inside -> the dots inside select
+      for (const el of sketchEls())
+        getPts(el).forEach((p, idx) => { if (inBox(p)) S.ptSel.push({ el, idx }); });
+    const nS = S.selection.length, nP = S.ptSel.length;
+    toast(nS ? `${nS} shape${nS > 1 ? "s" : ""} selected — drag moves, Del deletes, Esc deselects`
+        : nP ? `${nP} point${nP > 1 ? "s" : ""} selected — drag one to move ${nP > 1 ? "them together" : "it"}, Del deletes, Esc deselects`
+        : "nothing inside the box");
     S.dragEndAt = Date.now();
   } else if (boxStart.kind === "move") {
     scheduleSvgSave();
@@ -1056,7 +1066,7 @@ $("stageWrap").addEventListener("click", e => {
 
   if (S.mode === "sketch") {
     if (!S.drawing) {
-      if (S.selection.length) { clearSelection(); return; }  // click-away deselects
+      if (S.selection.length || S.ptSel.length) { clearSelection(); return; }  // click-away deselects
       const hit = segmentAt(u);
       if (hit) {
         if (dbl) {                       // double-tap a line -> type its exact length
@@ -1112,54 +1122,110 @@ window.addEventListener("keydown", e => {
     if (S.pasting) cancelPaste(); else if (S.drawing) cancelPath(); else clearSelection();
   }
   else if (e.key === "Backspace") { dropLastVertex(); e.preventDefault(); }
-  else if (e.key === "Delete" && S.selection.length) {
+  else if (e.key === "Delete") deleteSelection();
+  else if (mod && ((e.key.toLowerCase() === "z" && e.shiftKey) || e.key.toLowerCase() === "y")) { redo(); e.preventDefault(); }
+  else if (mod && e.key.toLowerCase() === "z") { undo(); e.preventDefault(); }
+});
+
+/* ---------- vertex editing: drag, select, delete ----------
+   Click a dot to select it; Shift/Ctrl+click adds or removes one; a box drawn
+   around dots (but no whole shape) selects those dots. Dragging a selected dot
+   carries every selected dot with it, Del removes them. Dragging an unselected
+   dot moves only that dot, as it always has. */
+const isPtSel = (el, idx) => S.ptSel.some(s => s.el === el && s.idx === idx);
+// drop vertices from one shape — or the shape itself when fewer than two
+// points would remain. Radii are keyed by vertex index, so survivors re-key.
+function removeVertices(el, idxs) {
+  const gone = new Set(idxs);
+  const pts = getPts(el).filter((_, i) => !gone.has(i));
+  if (pts.length < 2) { el.remove(); return; }
+  const fm = el.tagName === "path" ? getFillets(el) : null;
+  setPts(el, pts);
+  if (fm) {
+    const nm = new Map();
+    for (const [i, r] of fm)
+      if (!gone.has(i)) nm.set(i - [...gone].filter(g => g < i).length, r);
+    setFillets(el, nm);
+  }
+}
+// Del: selected points if there are any, otherwise the selected shapes
+function deleteSelection() {
+  if (S.ptSel.length) {
+    pushUndo();                          // one undo step for the whole delete
+    const n = S.ptSel.length, byEl = new Map();
+    for (const { el, idx } of S.ptSel) {
+      if (!byEl.has(el)) byEl.set(el, []);
+      byEl.get(el).push(idx);
+    }
+    for (const [el, idxs] of byEl) removeVertices(el, idxs);
+    S.ptSel = [];
+    drawOverlay(); scheduleSvgSave();
+    toast(`deleted ${n} point${n > 1 ? "s" : ""} — Ctrl+Z brings ${n > 1 ? "them" : "it"} back`);
+  } else if (S.selection.length) {
     pushUndo();
     S.selection.forEach(el => el.remove());
     clearSelection(); scheduleSvgSave();
     toast("deleted — Ctrl+Z brings it back");
   }
-  else if (mod && ((e.key.toLowerCase() === "z" && e.shiftKey) || e.key.toLowerCase() === "y")) { redo(); e.preventDefault(); }
-  else if (mod && e.key.toLowerCase() === "z") { undo(); e.preventDefault(); }
-});
-
-/* ---------- vertex dragging ---------- */
+}
 function handleDown(e, el, idx) {
+  if (e.button) return;                 // primary button / touch / pen only
   e.stopPropagation(); e.preventDefault();
   if (e.altKey) {                       // Alt+click = delete vertex (or path when tiny)
     pushUndo();
-    const pts = getPts(el);
-    pts.splice(idx, 1);
-    if (pts.length < 2) el.remove();
-    else {
-      setPts(el, pts);
-      if (el.tagName === "path") {      // drop this vertex's radius, shift the rest
-        const nm = new Map();
-        for (const [i, r] of getFillets(el)) { if (i !== idx) nm.set(i > idx ? i - 1 : i, r); }
-        setFillets(el, nm);
-      }
-    }
+    removeVertices(el, [idx]);
+    S.ptSel = [];                       // indices just shifted under any selection
     drawOverlay(); scheduleSvgSave();
     return;
   }
-  pushUndo();
-  S.dragging = { el, idx, moved: false };
+  S.dragging = { el, idx, moved: false, sx: e.clientX, sy: e.clientY,
+                 toggle: e.shiftKey || e.ctrlKey || e.metaKey, group: null, from: null };
   window.addEventListener("pointermove", handleMove);
   window.addEventListener("pointerup", handleUp);
 }
 function handleMove(e) {
-  if (!S.dragging) return;
+  const d = S.dragging;
+  if (!d) return;
   const u = toUser(e);
   if (!u) return;
-  const pts0 = getPts(S.dragging.el), i = S.dragging.idx;
-  const closed = isClosed(S.dragging.el);
-  const anchor = i > 0 ? pts0[i - 1]
-               : (closed && pts0.length > 2 ? pts0[pts0.length - 1]
-               : (pts0.length > 1 ? pts0[1] : null));
-  const su = snapU(e.shiftKey && anchor ? orthoSnap(anchor, u) : u);
-  const pts = pts0;
-  pts[S.dragging.idx] = [su.x, su.y];
-  setPts(S.dragging.el, pts);
-  S.dragging.moved = true;
+  if (!d.moved) {
+    // a few px of slack, so a click (select, double-tap) is never read as a drag
+    if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 3) return;
+    pushUndo();
+    d.moved = true;
+    if (!isPtSel(d.el, d.idx)) S.ptSel = [];        // an unselected dot moves alone
+    else if (S.ptSel.length > 1) {                  // a selected dot carries the rest
+      const byEl = new Map();
+      for (const s of S.ptSel) {
+        if (!byEl.has(s.el)) byEl.set(s.el, { el: s.el, pts0: getPts(s.el), idxs: [] });
+        byEl.get(s.el).idxs.push(s.idx);
+      }
+      d.group = [...byEl.values()];
+      d.from = getPts(d.el)[d.idx];
+    }
+  }
+  let su;
+  if (d.group) {
+    // the grabbed dot follows the cursor (snap + Shift 0/45/90 from where it
+    // started); every other selected dot takes the same offset
+    su = snapU(e.shiftKey ? orthoSnap(d.from, u) : u);
+    const dx = su.x - d.from[0], dy = su.y - d.from[1];
+    for (const g of d.group) {
+      const pts = g.pts0.map(p => [p[0], p[1]]);
+      for (const i of g.idxs)
+        pts[i] = [+(g.pts0[i][0] + dx).toFixed(1), +(g.pts0[i][1] + dy).toFixed(1)];
+      setPts(g.el, pts);
+    }
+  } else {
+    const pts = getPts(d.el), i = d.idx;
+    const closed = isClosed(d.el);
+    const anchor = i > 0 ? pts[i - 1]
+                 : (closed && pts.length > 2 ? pts[pts.length - 1]
+                 : (pts.length > 1 ? pts[1] : null));
+    su = snapU(e.shiftKey && anchor ? orthoSnap(anchor, u) : u);
+    pts[i] = [su.x, su.y];
+    setPts(d.el, pts);
+  }
   const mm = mmOf({ x: su.x, y: su.y });
   $("readout").textContent = `x ${fmtLen(mm.x)}  y ${fmtLen(mm.y)}`;
   drawSketchLayer();
@@ -1174,12 +1240,30 @@ function handleUp(e) {
   if (!d) return;
   if (d.moved) {
     scheduleSvgSave();
-    const pts = getPts(d.el);
-    if (pts[d.idx]) maybeExpand(pts[d.idx]);
+    if (d.group) {                       // grow the canvas around everything that moved
+      let x1 = 1e9, y1 = 1e9, x2 = -1e9, y2 = -1e9;
+      for (const g of d.group) {
+        const pts = getPts(g.el);
+        for (const i of g.idxs) {
+          x1 = Math.min(x1, pts[i][0]); y1 = Math.min(y1, pts[i][1]);
+          x2 = Math.max(x2, pts[i][0]); y2 = Math.max(y2, pts[i][1]);
+        }
+      }
+      maybeExpand([x1, y1]); maybeExpand([x2, y2]);
+    } else {
+      const pts = getPts(d.el);
+      if (pts[d.idx]) maybeExpand(pts[d.idx]);
+    }
     lastDotTap = null;
     return;
   }
-  S.undoStack.pop();  // click, not a drag
+  // a click, not a drag: select this dot (Shift/Ctrl adds it or takes it out)
+  if (d.toggle) {
+    const at = S.ptSel.findIndex(s => s.el === d.el && s.idx === d.idx);
+    if (at >= 0) S.ptSel.splice(at, 1); else S.ptSel.push({ el: d.el, idx: d.idx });
+  } else S.ptSel = [{ el: d.el, idx: d.idx }];
+  S.selection = [];                      // points and shapes never select together
+  drawSketchLayer();
   if (lastDotTap && lastDotTap.el === d.el && lastDotTap.idx === d.idx &&
       Date.now() - lastDotTap.t < 400 &&
       Math.hypot(e.clientX - lastDotTap.x, e.clientY - lastDotTap.y) < 12) {
@@ -1414,7 +1498,7 @@ function placePaste(t) {
     insertSketchEl(el);
   }
   cancelPaste();
-  S.selection = els;
+  S.selection = els; S.ptSel = [];
   const b = fragBounds(els);
   maybeExpand([b.x1, b.y1]); maybeExpand([b.x2, b.y2]);
   drawSketchLayer(); scheduleSvgSave();
@@ -1534,6 +1618,12 @@ function drawSketchLayer() {
   const z = S.zoom;
   // selection halos + bbox (drawn first so dots stay on top)
   S.selection = S.selection.filter(el => el.isConnected);
+  S.ptSel = S.ptSel.filter(s => s.el.isConnected);
+  const selIdx = new Map();            // el -> Set of selected vertex indices
+  for (const s of S.ptSel) {
+    if (!selIdx.has(s.el)) selIdx.set(s.el, new Set());
+    selIdx.get(s.el).add(s.idx);
+  }
   for (const el of S.selection) {
     const halo = document.createElementNS(NS, el.tagName);
     if (el.tagName === "path") halo.setAttribute("d", el.getAttribute("d"));
@@ -1554,23 +1644,32 @@ function drawSketchLayer() {
     sk.appendChild(dashRect(Math.min(a.x, b.x), Math.min(a.y, b.y),
                             Math.max(a.x, b.x), Math.max(a.y, b.y), "#5FB3A1", ".8"));
   }
-  // lengths show only where they're changing: the sides touching a dragged dot
+  // lengths show only where they're changing: sides with exactly one moving end
   if (S.dragging) {
-    const pts = getPts(S.dragging.el), i = S.dragging.idx;
-    const closed = isClosed(S.dragging.el);
-    const prev = i > 0 ? pts[i - 1] : (closed && pts.length > 2 ? pts[pts.length - 1] : null);
-    const next = i < pts.length - 1 ? pts[i + 1] : (closed && pts.length > 2 ? pts[0] : null);
-    if (prev) segLabel(sk, prev, pts[i], z);
-    if (next) segLabel(sk, pts[i], next, z);
+    const moving = S.dragging.group
+      ? S.dragging.group.map(g => [g.el, new Set(g.idxs)])
+      : [[S.dragging.el, new Set([S.dragging.idx])]];
+    for (const [el, mv] of moving) {
+      const pts = getPts(el), n = pts.length;
+      const sides = isClosed(el) && n > 2 ? n : n - 1;
+      for (let i = 0; i < sides; i++) {
+        const j = (i + 1) % n;
+        if (mv.has(i) !== mv.has(j)) segLabel(sk, pts[i], pts[j], z);
+      }
+    }
   }
   for (const el of sketchEls()) {
     const pts = getPts(el);
     const isDrawingEl = el === S.drawing?.el;
+    const picked = selIdx.get(el);
     pts.forEach(([x, y], idx) => {
+      const sel = !!picked && picked.has(idx);   // selected dots: bigger, white, teal ring
       const h = document.createElementNS(NS, "circle");
-      h.setAttribute("cx", x); h.setAttribute("cy", y); h.setAttribute("r", 4.5 / z);
-      h.setAttribute("fill", isDrawingEl && idx === 0 ? "#5FB3A1" : "#E6A23C");
-      h.setAttribute("stroke", "#23221E"); h.setAttribute("stroke-width", 1.2 / z);
+      h.setAttribute("cx", x); h.setAttribute("cy", y); h.setAttribute("r", (sel ? 6 : 4.5) / z);
+      h.setAttribute("fill", sel ? "#ffffff" : isDrawingEl && idx === 0 ? "#5FB3A1" : "#E6A23C");
+      h.setAttribute("stroke", sel ? "#5FB3A1" : "#23221E");
+      h.setAttribute("stroke-width", (sel ? 2.5 : 1.2) / z);
+      if (sel) h.setAttribute("class", "vs-ptsel");
       h.setAttribute("pointer-events", "all");
       h.style.cursor = "move";
       h.style.touchAction = "none";

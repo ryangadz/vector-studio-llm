@@ -112,6 +112,11 @@ mode to edit or delete it right where it is.
   dot** deletes it. **Click a line** to add a point on it. Double-clicks
   are detected by the viewer itself (two taps within ~400 ms), so they work
   the same on touchpads and touchscreens.
+- **Click a dot** to select it; **Shift+click** adds or removes dots, and a
+  box dragged around a few dots (but no whole shape) selects those. **Drag
+  any selected dot** and the rest travel with it — slide a run of points
+  along a wall without redrawing it. **Del** deletes the selected dots;
+  **Esc** or a click on empty canvas deselects.
 - **Double-click a line** → type its exact length in mm. Parametric-style
   resize: the edited side keeps its direction and downstream geometry slides
   rigidly; on closed shapes the first parallel side absorbs the change, so
@@ -121,8 +126,9 @@ mode to edit or delete it right where it is.
   the dots never go away:
 
   ![A plate with parametric corner radii in teal sketch mode, controls in the narrow-window top bar: the drag dots sit at the sharp model corners while the arcs are derived](docs/ui-parametric-corners-v2.png)
-- **Drag empty space** → box-select. Only shapes *fully* inside the box
-  select; drag the selection to move it, **Del** deletes, **Esc** deselects.
+- **Drag empty space** → box-select. Shapes *fully* inside the box select;
+  drag the selection to move it, **Del** deletes, **Esc** deselects. A box
+  that holds no whole shape selects the dots inside it instead.
 - **Ctrl+C / Ctrl+V** — a selection copies to the **system clipboard** as a
   standalone SVG fragment: the `data-vs` model attributes, canonical
   user-unit coordinates, and the drawing's unit/scale context on the root.
