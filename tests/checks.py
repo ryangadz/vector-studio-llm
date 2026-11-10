@@ -1,5 +1,5 @@
 """Functional checks for viewer.html — units layer, mode signals, auto layout,
-touch-friendly path finishing, and clipboard copy/paste.
+touch-friendly path finishing, clipboard copy/paste, and point selection.
 
 Runs everything against a scratch copy of the examples so the repo stays
 untouched:  python tests/checks.py        (needs: pip install playwright,
@@ -419,6 +419,102 @@ try:
         check("Esc cancels the paste clean",
               pg.evaluate("!vs.S.pasting && !document.querySelector('#vs-paste')") and
               pg.evaluate("document.querySelectorAll('#stage [data-vs]').length") == n1)
+
+        # ================= point selection: move together, delete =================
+        pg.evaluate("""fetch('/api/new', {method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({name:'points'})})""")
+        pg.wait_for_timeout(300)
+        pg.goto(f"{base}?file=sketches/points.svg&mode=sketch")
+        pg.wait_for_selector("#stage svg")
+        pg.wait_for_timeout(600)
+        pg.click("#zFit"); pg.wait_for_timeout(300)
+        px = svg_map()
+        line = [(100.0, 300.0), (200.0, 300.0), (300.0, 300.0), (400.0, 300.0), (500.0, 300.0)]
+        for ux, uy in line:
+            pg.mouse.click(*px(ux, uy)); pg.wait_for_timeout(450)
+        pg.keyboard.press("Enter")
+        pg.wait_for_timeout(200)
+
+        def line_pts():
+            return parse_pts(pg.evaluate(
+                "(e => e.getAttribute('points') ?? e.getAttribute('data-vs-pts'))"
+                "(document.querySelector('#stage [data-vs]'))"))
+        def sel():
+            return pg.evaluate("vs.S.ptSel.map(s => s.idx).sort((a, b) => a - b)")
+        def drag(a, b):
+            pg.mouse.move(*px(*a)); pg.mouse.down()
+            pg.mouse.move(*px(*b), steps=6); pg.mouse.up()
+            pg.wait_for_timeout(200)
+
+        # every dot click below waits out the 400 ms double-tap window
+        pg.mouse.click(*px(200, 300)); pg.wait_for_timeout(500)
+        check("clicking a dot selects it", sel() == [1])
+        check("the selected dot is drawn highlighted",
+              pg.evaluate("document.querySelectorAll('#vs-sketch .vs-ptsel').length") == 1)
+        check("selecting a dot moves nothing", line_pts() == line)
+        pg.keyboard.down("Shift")
+        pg.mouse.click(*px(300, 300)); pg.wait_for_timeout(500)
+        pg.mouse.click(*px(400, 300)); pg.wait_for_timeout(500)
+        check("Shift+click adds dots to the selection", sel() == [1, 2, 3])
+        pg.mouse.click(*px(400, 300)); pg.wait_for_timeout(500)
+        pg.keyboard.up("Shift")
+        check("Shift+click on a selected dot takes it back out", sel() == [1, 2])
+
+        drag((200, 300), (240, 340))
+        got = line_pts()
+        check("dragging a selected dot carries the others with it",
+              got == [(100, 300), (240, 340), (340, 340), (400, 300), (500, 300)], str(got))
+        check("the dots stay selected after the move", sel() == [1, 2])
+        pg.keyboard.press("Control+z"); pg.wait_for_timeout(200)
+        check("one Ctrl+Z undoes the whole group move", line_pts() == line, str(line_pts()))
+
+        drag((260, 260), (440, 340))     # a box around two dots, not the whole line
+        check("a box around some dots selects those points",
+              sel() == [2, 3] and pg.evaluate("vs.S.selection.length") == 0, str(sel()))
+        pg.keyboard.press("Delete"); pg.wait_for_timeout(200)
+        check("Del deletes the selected points",
+              line_pts() == [(100, 300), (200, 300), (500, 300)], str(line_pts()))
+        check("nothing stays selected after the delete", sel() == [])
+        pg.wait_for_timeout(1000)        # save debounce
+        saved = (WORK / "sketches" / "points.svg").read_text(encoding="utf-8")
+        check("the delete is saved to the file",
+              'points="100,300 200,300 500,300"' in saved, saved[-200:])
+        pg.keyboard.press("Control+z"); pg.wait_for_timeout(200)
+        check("Ctrl+Z brings the deleted points back", line_pts() == line, str(line_pts()))
+
+        pg.mouse.click(*px(200, 300)); pg.wait_for_timeout(500)
+        drag((400, 300), (400, 360))     # dot 3 is NOT selected
+        got = line_pts()
+        check("dragging an unselected dot moves only that dot",
+              got == [(100, 300), (200, 300), (300, 300), (400, 360), (500, 300)], str(got))
+        check("...and drops the point selection", sel() == [])
+        pg.mouse.click(*px(200, 300)); pg.wait_for_timeout(500)
+        pg.keyboard.press("Escape")
+        check("Esc deselects points", sel() == [])
+
+        # corner radii are keyed by vertex index: deleting an earlier point re-keys them
+        dx, dy = px(400, 360)
+        pg.mouse.click(dx, dy); pg.wait_for_timeout(250)
+        pg.mouse.click(dx, dy)
+        pg.wait_for_selector("#lenEdit", timeout=2000)
+        pg.keyboard.type("5"); pg.keyboard.press("Enter")
+        pg.wait_for_timeout(300)
+        fillets = lambda: pg.evaluate(
+            "document.querySelector('#stage path[data-vs]').getAttribute('data-vs-fillets')")
+        check("radius lands on vertex 3", fillets() == "3:10", str(fillets()))
+        check("the dot stays selected through the poly -> path swap", sel() == [3], str(sel()))
+        pg.mouse.click(*px(200, 300)); pg.wait_for_timeout(500)
+        pg.keyboard.press("Delete"); pg.wait_for_timeout(200)
+        check("Del deletes a single selected point", len(line_pts()) == 4, str(line_pts()))
+        check("the radius follows its corner to the new index", fillets() == "2:10", str(fillets()))
+        pg.keyboard.down("Alt")
+        pg.mouse.click(*px(300, 300))
+        pg.keyboard.up("Alt")
+        pg.wait_for_timeout(200)
+        check("Alt+click still deletes a dot",
+              line_pts() == [(100, 300), (400, 360), (500, 300)] and fillets() == "1:10",
+              f"{line_pts()} {fillets()}")
 
         b.close()
 finally:
